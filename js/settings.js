@@ -14,7 +14,7 @@
     profile: 'pass'
   };
 
-  var PROFILES = ['pass', 'webtv-h264-aac-mpegts', 'htsp'];
+  var PROFILES = ['pass', 'webtv-h264-aac-mpegts', 'webtv-vp8-vorbis-webm', 'htsp'];
 
   function clone(object) {
     var copy = {};

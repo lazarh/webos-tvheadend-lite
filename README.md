@@ -56,6 +56,9 @@ Two quick presets are available in the panel: the LAN server
   native media pipeline).
 - **`webtv-h264-aac-mpegts`** - transcodes to H.264 + AAC in MPEG-TS. Use it for
   channels whose codecs the TV cannot decode.
+- **`webtv-vp8-vorbis-webm`** - transcodes to WebM (VP8 + Vorbis). This is the
+  most compatible option for Chromium 53 when MPEG-TS is rejected; it costs more
+  server CPU.
 - **`htsp`** - produces `htsp://` URLs, which the HTML5 video element cannot
   play. The app detects this and shows a clear error instead of a black screen.
 

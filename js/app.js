@@ -20,6 +20,7 @@
   var PROFILE_NOTES = {
     'pass': 'No transcoding - works when the TV can decode the broadcast codecs',
     'webtv-h264-aac-mpegts': 'Transcodes every channel to H.264 + AAC in MPEG-TS',
+    'webtv-vp8-vorbis-webm': 'Transcodes to WebM (VP8 + Vorbis) - most browser compatible',
     'htsp': 'HTSP protocol - the HTML5 video element cannot play this'
   };
 
