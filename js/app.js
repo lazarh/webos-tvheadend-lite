@@ -835,4 +835,21 @@
   } else {
     init();
   }
+
+  /* Test/diagnostic hooks (harmless, used by the remote debug harness). */
+  window.__tvhTest = {
+    tuneIndex: tuneIndex,
+    findChannelNumber: function (number) {
+      var i;
+      for (i = 0; i < state.channels.length; i++) {
+        if (state.channels[i].number === number) {
+          return i;
+        }
+      }
+      return -1;
+    },
+    currentIndex: function () {
+      return state.currentIndex;
+    }
+  };
 })(window, document);
