@@ -87,7 +87,7 @@
     if (current) {
       programEl.classList.remove('hidden');
       progEl.textContent = current.title || '';
-      descEl.textContent = current.subtitle ? String(current.subtitle).slice(0, 160) : '';
+      descEl.textContent = (current.description || current.subtitle) ? String(current.description || current.subtitle).slice(0, 500) : '';
       var nowSec = Math.floor(Date.now() / 1000);
       var pct = 0;
       if (current.stop > current.start) {

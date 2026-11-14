@@ -287,11 +287,9 @@
       this.descEl.textContent = 'No program information';
       return;
     }
-    var text = clock(event.start * 1000) + ' - ' + clock(event.stop * 1000) + '  ' + (event.title || '');
-    if (event.subtitle) {
-      text += '  -  ' + event.subtitle;
-    }
-    this.descEl.textContent = text;
+    var head = clock(event.start * 1000) + ' - ' + clock(event.stop * 1000) + '  ' + (event.title || '');
+    var body = event.description || event.subtitle || '';
+    this.descEl.textContent = body ? head + '\n' + body : head;
   };
 
   window.TvhGuide = Guide;
