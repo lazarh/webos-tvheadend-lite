@@ -42,6 +42,11 @@
     return url.replace(/\/+$/, '');
   }
 
+  function normalizeProfile(profile) {
+    var value = trim(profile);
+    return value || DEFAULTS.profile;
+  }
+
   function validate(settings) {
     var server = normalizeServer(settings.server);
     if (!server) {
@@ -49,9 +54,6 @@
     }
     if (!/^https?:\/\/[^\/\s]+/i.test(server)) {
       return 'The server URL does not look valid - use http://host:port';
-    }
-    if (settings.profile && PROFILES.indexOf(settings.profile) === -1) {
-      return 'Unknown stream profile';
     }
     return null;
   }
@@ -74,8 +76,8 @@
       if (typeof stored.password === 'string') {
         settings.password = stored.password;
       }
-      if (PROFILES.indexOf(stored.profile) !== -1) {
-        settings.profile = stored.profile;
+      if (typeof stored.profile === 'string' && trim(stored.profile)) {
+        settings.profile = trim(stored.profile);
       }
     }
     settings.server = normalizeServer(settings.server);
@@ -87,7 +89,7 @@
       server: normalizeServer(settings.server),
       username: trim(settings.username),
       password: String(settings.password === undefined || settings.password === null ? '' : settings.password),
-      profile: PROFILES.indexOf(settings.profile) !== -1 ? settings.profile : DEFAULTS.profile
+      profile: normalizeProfile(settings.profile)
     };
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
@@ -129,7 +131,7 @@
 
   function playlistUrl(settings) {
     var base = normalizeServer(settings.server);
-    var profile = PROFILES.indexOf(settings.profile) !== -1 ? settings.profile : DEFAULTS.profile;
+    var profile = normalizeProfile(settings.profile);
     return base + '/playlist/channels.m3u?profile=' + encodeURIComponent(profile);
   }
 

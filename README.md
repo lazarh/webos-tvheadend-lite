@@ -49,6 +49,9 @@ Two quick presets are available in the panel: the LAN server
 (`http://tvheadend.local:9981`) and the internet/nginx proxy
 (`https://tvheadend.example`).
 
+The **Stream profile** field cycles through the built-in profile names with
+Left/Right; press **ENTER** to type any custom Tvheadend profile name.
+
 ### Stream profiles
 
 - **`pass`** - no transcoding. Best quality and lowest CPU load; the TV must be

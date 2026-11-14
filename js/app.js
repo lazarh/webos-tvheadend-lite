@@ -391,8 +391,8 @@
       }
     }
     setText('value-password', values.password ? bullets : '(none)');
-    setText('value-profile', values.profile);
-    setText('profile-note', PROFILE_NOTES[values.profile] || '');
+    setText('value-profile', values.profile || window.TvhSettings.DEFAULTS.profile);
+    setText('profile-note', PROFILE_NOTES[values.profile] || 'Custom Tvheadend stream profile');
     highlightSettingsFocus();
   }
 
@@ -451,10 +451,11 @@
     var profiles = window.TvhSettings.PROFILES;
     var index = profiles.indexOf(state.values.profile);
     if (index === -1) {
-      index = 0;
+      index = delta > 0 ? -1 : 0;
     }
     index = (index + delta + profiles.length) % profiles.length;
     state.values.profile = profiles[index];
+    hideSettingsError();
     renderSettings();
   }
 
@@ -465,8 +466,8 @@
     } else if (action === 'preset') {
       state.values.server = element.getAttribute('data-server');
       renderSettings();
-    } else if (action === 'cycle') {
-      cycleProfile(1);
+    } else if (action === 'profile') {
+      openKeyboardFor('profile', element.getAttribute('data-label'));
     } else if (action === 'save') {
       saveSettings();
     } else if (action === 'cancel') {
@@ -476,7 +477,13 @@
 
   function openKeyboardFor(key, label) {
     keyboard.open(label, state.values[key] || '', function (value) {
-      state.values[key] = key === 'server' ? value.replace(/^\s+|\s+$/g, '') : value;
+      if (key === 'server' || key === 'profile') {
+        value = value.replace(/^\s+|\s+$/g, '');
+      }
+      if (key === 'profile' && !value) {
+        value = window.TvhSettings.DEFAULTS.profile;
+      }
+      state.values[key] = value;
       hideSettingsError();
       renderSettings();
     }, function () {
@@ -500,13 +507,13 @@
         consume(event);
         break;
       case KEYS.LEFT:
-        if (element && element.getAttribute('data-action') === 'cycle') {
+        if (element && element.getAttribute('data-action') === 'profile') {
           cycleProfile(-1);
           consume(event);
         }
         break;
       case KEYS.RIGHT:
-        if (element && element.getAttribute('data-action') === 'cycle') {
+        if (element && element.getAttribute('data-action') === 'profile') {
           cycleProfile(1);
           consume(event);
         }
