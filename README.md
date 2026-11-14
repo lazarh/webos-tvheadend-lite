@@ -1,5 +1,7 @@
 # Tvheadend TV (webOS)
 
+[![Build webOS IPK](https://github.com/lazarh/webos-tvheadend-lite/actions/workflows/build.yml/badge.svg)](https://github.com/lazarh/webos-tvheadend-lite/actions/workflows/build.yml)
+
 A lightweight, native LG webOS TV app for watching live TV channels from a
 [Tvheadend](https://tvheadend.org/) server. Streams are played by the TV's
 native, hardware-accelerated HTML5 `<video>` element - no transcoding server,
