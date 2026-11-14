@@ -100,6 +100,10 @@
       window.TvhEpg.fetch(state.settings, channel.id, callback);
     });
 
+    guide.setGridProvider(function (callback) {
+      window.TvhEpg.fetchGrid(state.settings, callback);
+    });
+
     channelList.onPick = function (index) {
       channelList.close();
       if (index === -1) {
@@ -266,18 +270,30 @@
       case KEYS.UP:
       case KEYS.CH_UP:
       case KEYS.CH_UP_ALT:
-        guide.moveChannel(-1);
+        if (guide.inSchedule()) {
+          guide.moveProgram(-1);
+        } else {
+          guide.moveChannel(-1);
+        }
         break;
       case KEYS.DOWN:
       case KEYS.CH_DOWN:
       case KEYS.CH_DOWN_ALT:
-        guide.moveChannel(1);
-        break;
-      case KEYS.LEFT:
-        guide.moveProgram(-1);
+        if (guide.inSchedule()) {
+          guide.moveProgram(1);
+        } else {
+          guide.moveChannel(1);
+        }
         break;
       case KEYS.RIGHT:
-        guide.moveProgram(1);
+        guide.enterSchedule();
+        break;
+      case KEYS.LEFT:
+        if (guide.inSchedule()) {
+          guide.exitSchedule();
+        } else {
+          guide.close();
+        }
         break;
       case KEYS.ENTER:
         picked = guide.selectedChannel();

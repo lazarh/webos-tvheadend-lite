@@ -1,7 +1,10 @@
 /*
- * Tvheadend TV - EPG guide overlay.
- * Left column: channels. Right side: program strip for the focused channel
- * (now .. now+3h) with a highlighted "now" position.
+ * Tvheadend TV - EPG guide overlay (hybrid).
+ * Left pane: every channel with its now/next program and a progress bar.
+ * Right pane: the focused channel's day schedule as a text list plus a
+ * program info panel with the full description.
+ * Panes are navigated with LEFT/RIGHT; no time-axis blocks (they read as
+ * empty boxes on webOS TV Lite).
  */
 (function (window, document, undefined) {
   'use strict';
@@ -14,8 +17,8 @@
     return value < 10 ? '0' + value : String(value);
   }
 
-  function clock(ms) {
-    var date = new Date(ms);
+  function clock(sec) {
+    var date = new Date(sec * 1000);
     return pad(date.getHours()) + ':' + pad(date.getMinutes());
   }
 
@@ -23,8 +26,8 @@
     this.root = byId('guide');
     this.clockEl = byId('guide-clock');
     this.channelsEl = byId('guide-channels');
-    this.timesEl = byId('guide-times');
-    this.stripEl = byId('guide-strip');
+    this.scheduleEl = byId('guide-schedule');
+    this.dayLabelEl = byId('guide-day-label');
     this.infoTitleEl = byId('guide-info-title');
     this.infoTimeEl = byId('guide-info-time');
     this.infoDescEl = byId('guide-info-desc');
@@ -32,11 +35,13 @@
     this.channels = [];
     this.rows = [];
     this.index = 0;
+    this.pane = 'channels'; /* 'channels' | 'schedule' */
     this.programIndex = 0;
-    this.events = [];
-    this.winStart = 0;
-    this.winEnd = 0;
+    this.dayEvents = [];
+    this.programNodes = [];
+    this.grid = null;
     this.eventsProvider = null;
+    this.gridProvider = null;
     this.onPick = null;
     this.tickTimer = null;
     this.bindClicks();
@@ -57,8 +62,25 @@
         return;
       }
       self.index = picked;
-      self.highlight();
-      self.loadEvents();
+      self.pane = 'channels';
+      self.renderFocus();
+      self.loadSchedule();
+    }, false);
+    this.scheduleEl.addEventListener('click', function (event) {
+      var target = event.target;
+      while (target && target !== self.scheduleEl && !target.getAttribute('data-index')) {
+        target = target.parentNode;
+      }
+      if (!target || target === self.scheduleEl) {
+        return;
+      }
+      var picked = parseInt(target.getAttribute('data-index'), 10);
+      if (isNaN(picked)) {
+        return;
+      }
+      self.pane = 'schedule';
+      self.programIndex = picked;
+      self.renderSchedule();
     }, false);
   };
 
@@ -74,17 +96,36 @@
       row.className = 'guide-ch';
       row.setAttribute('data-index', String(i));
 
+      var head = document.createElement('div');
+      head.className = 'guide-ch-head';
       var numberEl = document.createElement('span');
       numberEl.className = 'guide-num';
       numberEl.textContent = String(this.channels[i].number);
-
       var nameEl = document.createElement('span');
       nameEl.className = 'guide-name';
       nameEl.textContent = this.channels[i].name;
+      head.appendChild(numberEl);
+      head.appendChild(nameEl);
 
-      row.appendChild(numberEl);
-      row.appendChild(nameEl);
+      var nowEl = document.createElement('div');
+      nowEl.className = 'guide-ch-now';
+      var barEl = document.createElement('div');
+      barEl.className = 'guide-ch-bar';
+      var fillEl = document.createElement('div');
+      fillEl.className = 'guide-ch-bar-fill';
+      barEl.appendChild(fillEl);
+      var nextEl = document.createElement('div');
+      nextEl.className = 'guide-ch-next';
+
+      row.appendChild(head);
+      row.appendChild(nowEl);
+      row.appendChild(barEl);
+      row.appendChild(nextEl);
       fragment.appendChild(row);
+
+      row.__now = nowEl;
+      row.__fill = fillEl;
+      row.__next = nextEl;
       this.rows.push(row);
     }
     this.channelsEl.appendChild(fragment);
@@ -94,8 +135,16 @@
     this.eventsProvider = provider;
   };
 
+  Guide.prototype.setGridProvider = function (provider) {
+    this.gridProvider = provider;
+  };
+
   Guide.prototype.isOpen = function () {
     return !this.root.classList.contains('hidden');
+  };
+
+  Guide.prototype.inSchedule = function () {
+    return this.pane === 'schedule';
   };
 
   Guide.prototype.open = function (index) {
@@ -106,18 +155,22 @@
     if (this.index < 0 || this.index >= this.channels.length) {
       this.index = 0;
     }
+    this.pane = 'channels';
     this.root.classList.remove('hidden');
-    this.highlight();
-    this.loadEvents();
     this.renderClock();
+    this.renderFocus();
+    this.loadGrid();
+    this.loadSchedule();
+
     var self = this;
     if (this.tickTimer) {
       window.clearInterval(this.tickTimer);
     }
     this.tickTimer = window.setInterval(function () {
       self.renderClock();
-      self.positionNowLine();
-    }, 30000);
+      self.updateRowsNowNext();
+      self.renderSchedule();
+    }, 60000);
   };
 
   Guide.prototype.close = function () {
@@ -129,24 +182,76 @@
   };
 
   Guide.prototype.renderClock = function () {
-    this.clockEl.textContent = clock(Date.now());
+    this.clockEl.textContent = clock(Math.floor(Date.now() / 1000));
   };
 
-  Guide.prototype.highlight = function () {
-    var i;
-    for (i = 0; i < this.rows.length; i++) {
-      if (i === this.index) {
-        this.rows[i].classList.add('active');
-      } else {
-        this.rows[i].classList.remove('active');
-      }
-    }
-    var row = this.rows[this.index];
-    if (!row) {
+  /* ----------------------------------------------------------- left pane */
+
+  Guide.prototype.loadGrid = function () {
+    var self = this;
+    if (typeof this.gridProvider !== 'function') {
       return;
     }
-    var top = row.offsetTop;
-    var bottom = top + row.offsetHeight;
+    this.gridProvider(function (error, grid) {
+      if (error) {
+        return;
+      }
+      self.grid = grid;
+      self.updateRowsNowNext();
+    });
+  };
+
+  Guide.prototype.updateRowsNowNext = function () {
+    var nowSec = Math.floor(Date.now() / 1000);
+    var i;
+    for (i = 0; i < this.channels.length; i++) {
+      var channel = this.channels[i];
+      var row = this.rows[i];
+      if (!row) {
+        continue;
+      }
+      var info = window.TvhEpg.gridNowNext(this.grid, channel.id, nowSec);
+      var current = info.now;
+      var next = info.next;
+
+      if (current) {
+        row.__now.textContent = current.title || 'Program';
+        var pct = 0;
+        if (current.stop > current.start) {
+          pct = Math.max(0, Math.min(100, ((nowSec - current.start) / (current.stop - current.start)) * 100));
+        }
+        row.__fill.style.width = pct + '%';
+        row.__next.textContent = next ? 'Next: ' + next.title : '';
+      } else {
+        row.__now.textContent = 'No program info';
+        row.__fill.style.width = '0%';
+        row.__next.textContent = next ? 'Next: ' + next.title : '';
+      }
+    }
+  };
+
+  Guide.prototype.renderFocus = function () {
+    var i;
+    for (i = 0; i < this.rows.length; i++) {
+      var row = this.rows[i];
+      if (i === this.index) {
+        row.classList.add(this.pane === 'channels' ? 'active' : 'focused');
+        if (this.pane === 'channels') {
+          row.classList.remove('focused');
+        } else {
+          row.classList.remove('active');
+        }
+      } else {
+        row.classList.remove('active');
+        row.classList.remove('focused');
+      }
+    }
+    var node = this.rows[this.index];
+    if (!node) {
+      return;
+    }
+    var top = node.offsetTop;
+    var bottom = top + node.offsetHeight;
     if (top < this.channelsEl.scrollTop) {
       this.channelsEl.scrollTop = top;
     } else if (bottom > this.channelsEl.scrollTop + this.channelsEl.clientHeight) {
@@ -158,38 +263,35 @@
     return this.index;
   };
 
-  Guide.prototype.currentChannel = function () {
-    return this.channels[this.index];
-  };
-
   Guide.prototype.moveChannel = function (delta) {
     var count = this.channels.length;
     if (!count) {
       return;
     }
     this.index = ((this.index + delta) % count + count) % count;
-    this.programIndex = 0;
-    this.highlight();
-    this.loadEvents();
+    this.renderFocus();
+    this.loadSchedule();
   };
 
-  Guide.prototype.moveProgram = function (delta) {
-    if (!this.events.length) {
-      return;
-    }
-    this.programIndex = ((this.programIndex + delta) % this.events.length + this.events.length) % this.events.length;
-    this.renderStrip();
+  /* ---------------------------------------------------------- right pane */
+
+  Guide.prototype.currentChannel = function () {
+    return this.channels[this.index];
   };
 
-  Guide.prototype.loadEvents = function () {
+  Guide.prototype.loadSchedule = function () {
     var self = this;
     var channel = this.currentChannel();
-    this.events = [];
+    this.dayEvents = [];
     this.programIndex = 0;
-    this.renderStrip();
+    this.renderSchedule();
     this.renderInfo(null);
-    if (!channel || !channel.id || typeof this.eventsProvider !== 'function') {
+
+    if (!channel || !channel.id) {
       this.infoDescEl.textContent = 'No program guide for this channel';
+      return;
+    }
+    if (typeof this.eventsProvider !== 'function') {
       return;
     }
     this.eventsProvider(channel, function (error, events) {
@@ -201,102 +303,110 @@
         return;
       }
       var nowSec = Math.floor(Date.now() / 1000);
-      self.winStart = nowSec;
-      self.winEnd = nowSec + 2 * 3600;
-      self.events = window.TvhEpg.inWindow(events, self.winStart, self.winEnd);
-      /* focus the program that is on now */
+      self.dayEvents = window.TvhEpg.inWindow(events, nowSec - 3600, nowSec + 12 * 3600);
+      if (self.dayEvents.length > 40) {
+        self.dayEvents = self.dayEvents.slice(0, 40);
+      }
       var i;
-      for (i = 0; i < self.events.length; i++) {
-        if (self.events[i].start <= nowSec && nowSec < self.events[i].stop) {
+      for (i = 0; i < self.dayEvents.length; i++) {
+        if (self.dayEvents[i].start <= nowSec && nowSec < self.dayEvents[i].stop) {
           self.programIndex = i;
           break;
         }
       }
-      self.renderStrip();
-      self.renderTimes();
+      self.renderSchedule();
     });
   };
 
-  Guide.prototype.renderTimes = function () {
-    this.timesEl.innerHTML = '';
-    var spanSec = this.winEnd - this.winStart;
-    var slot = spanSec / 6; /* 30 minute ticks */
-    var i;
-    for (i = 0; i <= 6; i++) {
-      var tick = document.createElement('span');
-      tick.className = 'guide-tick';
-      tick.textContent = clock((this.winStart + i * slot) * 1000);
-      tick.style.left = ((i / 6) * 100) + '%';
-      this.timesEl.appendChild(tick);
-    }
-  };
-
-  Guide.prototype.positionNowLine = function () {
-    var line = byId('guide-nowline');
-    if (!line) {
+  Guide.prototype.enterSchedule = function () {
+    if (!this.dayEvents.length) {
       return;
     }
-    var nowSec = Math.floor(Date.now() / 1000);
-    var pct = ((nowSec - this.winStart) / (this.winEnd - this.winStart)) * 100;
-    if (pct < 0) { pct = 0; }
-    if (pct > 100) { pct = 100; }
-    line.style.left = pct + '%';
+    this.pane = 'schedule';
+    this.renderFocus();
+    this.renderSchedule();
   };
 
-  Guide.prototype.renderStrip = function () {
-    var self = this;
-    this.stripEl.innerHTML = '';
+  Guide.prototype.exitSchedule = function () {
+    this.pane = 'channels';
+    this.renderFocus();
+    this.renderSchedule();
+  };
 
-    var line = document.createElement('div');
-    line.id = 'guide-nowline';
-    line.className = 'guide-nowline';
-    this.stripEl.appendChild(line);
-
-    var spanSec = this.winEnd - this.winStart;
-    var i;
-    for (i = 0; i < this.events.length; i++) {
-      (function (event, index) {
-        var startSec = Math.max(event.start, self.winStart);
-        var stopSec = Math.min(event.stop, self.winEnd);
-        var left = ((startSec - self.winStart) / spanSec) * 100;
-        var width = ((stopSec - startSec) / spanSec) * 100;
-        if (width < 0.5) { width = 0.5; }
-
-        var block = document.createElement('div');
-        block.className = 'guide-block' + (index === self.programIndex ? ' selected' : '') + (width < 8 ? ' narrow' : '');
-        block.style.left = left + '%';
-        block.style.width = width + '%';
-
-        var titleEl = document.createElement('div');
-        titleEl.className = 'guide-block-title';
-        titleEl.textContent = event.title || '(no title)';
-        var timeEl = document.createElement('div');
-        timeEl.className = 'guide-block-time';
-        timeEl.textContent = clock(event.start * 1000);
-
-        block.appendChild(titleEl);
-        block.appendChild(timeEl);
-        self.stripEl.appendChild(block);
-      })(this.events[i], i);
+  Guide.prototype.moveProgram = function (delta) {
+    if (!this.dayEvents.length) {
+      return;
     }
-    this.positionNowLine();
-    this.renderDescription();
+    this.programIndex = ((this.programIndex + delta) % this.dayEvents.length + this.dayEvents.length) % this.dayEvents.length;
+    this.renderSchedule();
+  };
+
+  Guide.prototype.renderSchedule = function () {
+    var self = this;
+    this.scheduleEl.innerHTML = '';
+    this.programNodes = [];
+
+    var nowSec = Math.floor(Date.now() / 1000);
+    var i;
+    for (i = 0; i < this.dayEvents.length; i++) {
+      (function (event, index) {
+        var row = document.createElement('div');
+        row.className = 'guide-prog';
+        row.setAttribute('data-index', String(index));
+        if (index === self.programIndex && self.pane === 'schedule') {
+          row.classList.add('selected');
+        }
+        var onNow = event.start <= nowSec && nowSec < event.stop;
+
+        var timeEl = document.createElement('span');
+        timeEl.className = 'guide-prog-time';
+        timeEl.textContent = clock(event.start);
+        var titleEl = document.createElement('span');
+        titleEl.className = 'guide-prog-title';
+        titleEl.textContent = event.title || '(no title)';
+        row.appendChild(timeEl);
+        row.appendChild(titleEl);
+        if (onNow) {
+          var badgeEl = document.createElement('span');
+          badgeEl.className = 'guide-prog-badge';
+          badgeEl.textContent = 'ON NOW';
+          row.appendChild(badgeEl);
+        }
+        self.scheduleEl.appendChild(row);
+        self.programNodes.push(row);
+      })(this.dayEvents[i], i);
+    }
+
+    if (!this.dayEvents.length) {
+      this.dayLabelEl.textContent = 'Programs - no guide data';
+    } else {
+      this.dayLabelEl.textContent = 'Programs - ' + clock(this.dayEvents[0].start) + ' onward';
+    }
+
+    this.renderInfo(this.dayEvents[this.programIndex]);
+
+    var node = this.programNodes[this.programIndex];
+    if (node && this.pane === 'schedule') {
+      var top = node.offsetTop;
+      var bottom = top + node.offsetHeight;
+      if (top < this.scheduleEl.scrollTop) {
+        this.scheduleEl.scrollTop = top;
+      } else if (bottom > this.scheduleEl.scrollTop + this.scheduleEl.clientHeight) {
+        this.scheduleEl.scrollTop = bottom - this.scheduleEl.clientHeight;
+      }
+    }
   };
 
   Guide.prototype.renderInfo = function (event) {
     if (!event) {
       this.infoTitleEl.textContent = '\u00a0';
       this.infoTimeEl.textContent = '\u00a0';
-      this.infoDescEl.textContent = this.events.length ? '\u00a0' : 'Loading program guide...';
+      this.infoDescEl.textContent = '\u00a0';
       return;
     }
     this.infoTitleEl.textContent = event.title || '(no title)';
-    this.infoTimeEl.textContent = clock(event.start * 1000) + ' - ' + clock(event.stop * 1000);
+    this.infoTimeEl.textContent = clock(event.start) + ' - ' + clock(event.stop);
     this.infoDescEl.textContent = event.description || event.subtitle || '';
-  };
-
-  Guide.prototype.renderDescription = function () {
-    this.renderInfo(this.events[this.programIndex]);
   };
 
   window.TvhGuide = Guide;

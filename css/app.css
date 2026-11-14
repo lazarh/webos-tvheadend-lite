@@ -339,19 +339,20 @@ body {
 
 .guide-channels {
   position: relative;
-  width: 520px;
+  width: 700px;
+  flex: none;
   overflow-y: auto;
   border-right: 1px solid rgba(80, 140, 220, 0.25);
 }
 
 .guide-ch {
-  display: flex;
-  align-items: center;
-  padding: 13px 24px;
-  font-size: 24px;
-  color: #cfe0f2;
+  padding: 10px 20px;
   border-left: 6px solid transparent;
-  white-space: nowrap;
+}
+
+.guide-ch-head {
+  display: flex;
+  align-items: baseline;
 }
 
 .guide-num {
@@ -359,17 +360,57 @@ body {
   flex: none;
   color: #7cc4ff;
   font-weight: 600;
+  font-size: 22px;
 }
 
 .guide-name {
+  font-size: 24px;
+  font-weight: 600;
+  color: #eaf2ff;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guide-ch-now {
+  margin-top: 3px;
+  font-size: 19px;
+  color: #cfe0f2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guide-ch-bar {
+  height: 5px;
+  margin-top: 6px;
+  background: rgba(124, 196, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.guide-ch-bar-fill {
+  height: 100%;
+  background: #4aa3ff;
+}
+
+.guide-ch-next {
+  margin-top: 4px;
+  font-size: 16px;
+  color: #8ba3bd;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .guide-ch.active {
   background: rgba(74, 163, 255, 0.18);
   border-left-color: #4aa3ff;
-  color: #ffffff;
+}
+
+.guide-ch.focused {
+  background: rgba(74, 163, 255, 0.1);
+  border-left-color: rgba(74, 163, 255, 0.5);
 }
 
 .guide-right {
@@ -379,108 +420,87 @@ body {
   min-width: 0;
 }
 
-.guide-times {
-  position: relative;
-  height: 36px;
+.guide-day-label {
+  padding: 10px 22px;
+  font-size: 19px;
+  color: #8ba3bd;
   border-bottom: 1px solid rgba(80, 140, 220, 0.2);
 }
 
-.guide-tick {
-  position: absolute;
-  top: 9px;
-  font-size: 18px;
-  color: #8ba3bd;
-  transform: translateX(-4px);
-}
-
-.guide-strip {
+.guide-schedule {
   position: relative;
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
-.guide-block {
-  position: absolute;
-  top: 12px;
-  bottom: 12px;
-  background: rgba(24, 48, 82, 0.9);
-  border: 2px solid rgba(80, 140, 220, 0.35);
-  border-radius: 10px;
-  padding: 8px 12px;
-  overflow: hidden;
+.guide-prog {
+  display: flex;
+  align-items: center;
+  padding: 12px 22px;
+  font-size: 22px;
+  color: #cfe0f2;
+  border-left: 4px solid transparent;
 }
 
-.guide-block.narrow .guide-block-title {
-  display: none;
-}
-
-.guide-block.selected {
-  border-color: #4aa3ff;
-  background: rgba(29, 95, 168, 0.95);
-  box-shadow: 0 0 0 3px rgba(74, 163, 255, 0.3);
-}
-
-.guide-block-title {
-  font-size: 20px;
+.guide-prog-time {
+  width: 110px;
+  flex: none;
+  color: #7cc4ff;
   font-weight: 600;
-  color: #eaf2ff;
+}
+
+.guide-prog-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.guide-prog-badge {
+  flex: none;
+  margin-left: 12px;
+  font-size: 15px;
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  border-radius: 6px;
+  padding: 2px 8px;
+}
+
+.guide-prog.selected {
+  background: rgba(29, 95, 168, 0.95);
+  border-left-color: #4aa3ff;
+  color: #ffffff;
+}
+
+.guide-info {
+  height: 200px;
+  flex: none;
+  border-top: 1px solid rgba(80, 140, 220, 0.25);
+  background: rgba(8, 16, 28, 0.55);
+  padding: 14px 22px;
+  overflow: hidden;
+}
+
+.guide-info-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #ffd76a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.guide-block-time {
-  margin-top: 3px;
-  font-size: 15px;
-  color: #9fb4cc;
-}
-
-.guide-nowline {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: #ff5f5f;
-  z-index: 5;
-}
-
-.guide-info {
-  width: 540px;
-  flex: none;
-  border-left: 1px solid rgba(80, 140, 220, 0.25);
-  background: rgba(8, 16, 28, 0.55);
-  padding: 18px 22px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.guide-info-label {
-  font-size: 17px;
-  color: #8ba3bd;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.guide-info-title {
-  margin-top: 8px;
-  font-size: 30px;
-  font-weight: 600;
-  color: #ffd76a;
-  line-height: 1.25;
-}
-
 .guide-info-time {
-  margin-top: 6px;
-  font-size: 21px;
+  margin-top: 4px;
+  font-size: 20px;
   color: #7cc4ff;
 }
 
 .guide-info-desc {
-  margin-top: 12px;
-  flex: 1;
-  font-size: 21px;
-  line-height: 1.4;
+  margin-top: 8px;
+  height: 118px;
+  font-size: 20px;
+  line-height: 1.35;
   color: #dbe8f6;
   white-space: normal;
   word-break: break-word;

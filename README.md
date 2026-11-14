@@ -47,8 +47,9 @@ Built for **webOS 3.x (Chromium 53)** and tested against webOS 3.9.3.
 
 Inside the channel list: `Up`/`Down` browse, `OK`/`Right` watches,
 `Left` closes, `Info` opens the guide.
-Inside the guide: `Up`/`Down` change channel, `Left`/`Right` change program,
-`OK` watches, `Blue` closes.
+Inside the guide: `Up`/`Down` change channel (or program when the schedule
+pane is active), `Left`/`Right` switch between the channel list and the day
+schedule pane, `OK` watches, `Blue` closes.
 Settings and the on-screen keyboard are fully D-pad operable
 (`Blue` cancels).
 
