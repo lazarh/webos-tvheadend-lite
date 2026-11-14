@@ -27,8 +27,14 @@
         <div id="osd-name" class="osd-name">&nbsp;</div>
         <div id="osd-status" class="osd-status">&nbsp;</div>
       </div>
+      <div class="osd-program hidden" id="osd-program">
+        <div id="osd-prog" class="osd-prog">&nbsp;</div>
+        <div id="osd-bar" class="osd-bar hidden"><div id="osd-bar-fill" class="osd-bar-fill"></div></div>
+        <div id="osd-desc" class="osd-desc">&nbsp;</div>
+        <div id="osd-next" class="osd-next">&nbsp;</div>
+      </div>
     </div>
-    <div class="osd-hint">ENTER: channels &nbsp;&middot;&nbsp; UP/DOWN: zap &nbsp;&middot;&nbsp; RED: settings</div>
+    <div class="osd-hint">OK: channels &nbsp;&middot;&nbsp; UP/DOWN: zap &nbsp;&middot;&nbsp; INFO: guide &nbsp;&middot;&nbsp; RED: settings</div>
   </div>
 
   <!-- Channel list -->
@@ -41,7 +47,26 @@
       <div class="list-scroll" id="list-scroll">
         <ul id="list-items" class="list-items"></ul>
       </div>
-      <div class="panel-footer">UP/DOWN browse &nbsp;&middot;&nbsp; ENTER watch &nbsp;&middot;&nbsp; BACK close</div>
+      <div class="panel-footer">UP/DOWN browse &nbsp;&middot;&nbsp; OK watch &nbsp;&middot;&nbsp; LEFT close &nbsp;&middot;&nbsp; INFO guide</div>
+    </div>
+  </div>
+
+  <!-- TV guide -->
+  <div id="guide" class="overlay hidden">
+    <div class="guide-panel">
+      <div class="panel-header">
+        <span>TV Guide</span>
+        <span id="guide-clock" class="count"></span>
+      </div>
+      <div class="guide-body">
+        <div class="guide-channels" id="guide-channels"></div>
+        <div class="guide-right">
+          <div class="guide-times" id="guide-times"></div>
+          <div class="guide-strip" id="guide-strip"></div>
+          <div class="guide-desc" id="guide-desc">&nbsp;</div>
+        </div>
+      </div>
+      <div class="panel-footer">UP/DOWN channel &nbsp;&middot;&nbsp; LEFT/RIGHT program &nbsp;&middot;&nbsp; OK watch &nbsp;&middot;&nbsp; BLUE close</div>
     </div>
   </div>
 
@@ -49,7 +74,7 @@
   <div id="settings" class="overlay hidden">
     <div class="settings-panel">
       <div class="panel-header"><span>Settings</span></div>
-      <div class="form-body">
+      <div class="form-body" id="form-body">
         <div class="field focusable" data-action="edit" data-key="server" data-label="Server URL">
           <div class="field-label">Server URL</div>
           <div class="field-value" id="value-server">&nbsp;</div>
@@ -87,7 +112,7 @@
         <div class="btn primary focusable" data-action="save">Save &amp; reload</div>
         <div class="btn focusable" data-action="cancel">Cancel</div>
       </div>
-      <div class="panel-footer">UP/DOWN move &nbsp;&middot;&nbsp; ENTER select or type &nbsp;&middot;&nbsp; LEFT/RIGHT change profile &nbsp;&middot;&nbsp; BACK cancel</div>
+      <div class="panel-footer">UP/DOWN move &nbsp;&middot;&nbsp; ENTER select or type &nbsp;&middot;&nbsp; LEFT/RIGHT change values &nbsp;&middot;&nbsp; BLUE cancel</div>
     </div>
   </div>
 
@@ -99,7 +124,7 @@
         <div class="kb-value" id="kb-value">(empty)</div>
       </div>
       <div class="kb-grid" id="kb-grid"></div>
-      <div class="panel-footer">ARROWS move &nbsp;&middot;&nbsp; ENTER type &nbsp;&middot;&nbsp; BACK cancel</div>
+      <div class="panel-footer">ARROWS move &nbsp;&middot;&nbsp; ENTER type &nbsp;&middot;&nbsp; BLUE cancel</div>
     </div>
   </div>
 </div>
@@ -109,6 +134,8 @@
 <script src="js/player.js"></script>
 <script src="js/keyboard.js"></script>
 <script src="js/osd.js"></script>
+<script src="js/epg.js"></script>
+<script src="js/guide.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

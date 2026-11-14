@@ -12,9 +12,17 @@
     UP: 38,
     RIGHT: 39,
     DOWN: 40,
-    CH_UP: 427,
-    CH_DOWN: 428,
-    RED: 403
+    /* webOS TV Lite sends CH+/CH- as PageUp/PageDown */
+    CH_UP: 33,
+    CH_DOWN: 34,
+    /* standard webOS key codes for CH+/CH- */
+    CH_UP_ALT: 427,
+    CH_DOWN_ALT: 428,
+    RED: 403,
+    GREEN: 404,
+    YELLOW: 405,
+    BLUE: 406,
+    INFO: 457
   };
 
   var PROFILE_NOTES = {
@@ -54,6 +62,7 @@
   var player = null;
   var osd = null;
   var channelList = null;
+  var guide = null;
   var message = null;
   var keyboard = null;
 
@@ -79,11 +88,24 @@
     player = new window.TvhPlayer(byId('player'));
     osd = new window.TvhUi.Osd();
     channelList = new window.TvhUi.ChannelList();
+    guide = new window.TvhGuide();
     message = new window.TvhUi.MessageScreen();
     keyboard = new window.TvhKeyboard();
 
+    guide.setEventsProvider(function (channel, callback) {
+      if (!channel || !channel.id) {
+        callback(null, []);
+        return;
+      }
+      window.TvhEpg.fetch(state.settings, channel.id, callback);
+    });
+
     channelList.onPick = function (index) {
       channelList.close();
+      if (index === -1) {
+        openGuide();
+        return;
+      }
       tuneIndex(index);
     };
 
@@ -116,6 +138,10 @@
       handleListKey(event);
       return;
     }
+    if (guide.isOpen()) {
+      handleGuideKey(event);
+      return;
+    }
     if (message.isVisible()) {
       handleMessageKey(event);
       return;
@@ -146,21 +172,28 @@
     switch (code) {
       case KEYS.UP:
       case KEYS.CH_UP:
+      case KEYS.CH_UP_ALT:
         zap(1);
         break;
       case KEYS.DOWN:
       case KEYS.CH_DOWN:
+      case KEYS.CH_DOWN_ALT:
         zap(-1);
         break;
       case KEYS.ENTER:
+      case KEYS.LEFT:
+      case KEYS.RIGHT:
         openChannelList();
+        break;
+      case KEYS.INFO:
+        openGuide();
         break;
       case KEYS.RED:
         openSettings();
         break;
       case KEYS.BACK:
       case KEYS.ESC:
-        handled = false; /* let webOS close the app */
+        handled = false; /* let webOS close the app (Back never arrives on Lite) */
         break;
       default:
         if (isDigitKey(code)) {
@@ -183,23 +216,82 @@
     switch (code) {
       case KEYS.UP:
       case KEYS.CH_UP:
+      case KEYS.CH_UP_ALT:
         channelList.move(-1);
         break;
       case KEYS.DOWN:
       case KEYS.CH_DOWN:
+      case KEYS.CH_DOWN_ALT:
         channelList.move(1);
         break;
       case KEYS.ENTER:
+      case KEYS.RIGHT:
         picked = channelList.selected();
         channelList.close();
-        tuneIndex(picked);
+        if (picked === -1) {
+          openGuide();
+        } else {
+          tuneIndex(picked);
+        }
         break;
+      case KEYS.LEFT:
+      case KEYS.BLUE:
       case KEYS.BACK:
       case KEYS.ESC:
         channelList.close();
         break;
+      case KEYS.INFO:
+        channelList.close();
+        openGuide();
+        break;
       case KEYS.RED:
         channelList.close();
+        openSettings();
+        break;
+      default:
+        handled = false;
+    }
+
+    if (handled) {
+      consume(event);
+    }
+  }
+
+  function handleGuideKey(event) {
+    var code = event.keyCode;
+    var handled = true;
+    var picked;
+
+    switch (code) {
+      case KEYS.UP:
+      case KEYS.CH_UP:
+      case KEYS.CH_UP_ALT:
+        guide.moveChannel(-1);
+        break;
+      case KEYS.DOWN:
+      case KEYS.CH_DOWN:
+      case KEYS.CH_DOWN_ALT:
+        guide.moveChannel(1);
+        break;
+      case KEYS.LEFT:
+        guide.moveProgram(-1);
+        break;
+      case KEYS.RIGHT:
+        guide.moveProgram(1);
+        break;
+      case KEYS.ENTER:
+        picked = guide.selectedChannel();
+        guide.close();
+        tuneIndex(picked);
+        break;
+      case KEYS.INFO:
+      case KEYS.BLUE:
+      case KEYS.BACK:
+      case KEYS.ESC:
+        guide.close();
+        break;
+      case KEYS.RED:
+        guide.close();
         openSettings();
         break;
       default:
@@ -351,6 +443,7 @@
     channelList.setCurrent(state.currentIndex);
     message.hide();
     osd.show(channel, startStatus || 'Switching...');
+    loadNowNext(channel);
 
     player.tune(effectiveChannel, state.settings, {
       status: function (text) {
@@ -416,6 +509,37 @@
     clearDigits();
     osd.hide();
     channelList.open(state.currentIndex);
+  }
+
+  function openGuide() {
+    if (!state.channels.length) {
+      loadPlaylist();
+      return;
+    }
+    clearDigits();
+    osd.hide();
+    guide.setChannels(state.channels);
+    guide.open(state.currentIndex);
+  }
+
+  /* Fetch now/next for the tuned channel and show it in the OSD. */
+  function loadNowNext(channel) {
+    if (!channel || !channel.id) {
+      osd.setProgram(null, null);
+      return;
+    }
+    window.TvhEpg.fetch(state.settings, channel.id, function (error, events) {
+      if (error) {
+        return;
+      }
+      if (state.channels[state.currentIndex] !== channel) {
+        return; /* tuned away while loading */
+      }
+      var info = window.TvhEpg.nowNext(events, Date.now());
+      if (osd.isVisible()) {
+        osd.setProgram(info.now, info.next);
+      }
+    });
   }
 
   /* ------------------------------------------------- direct channel entry */
@@ -489,6 +613,18 @@
         settingsFocusables[i].classList.add('focused');
       } else {
         settingsFocusables[i].classList.remove('focused');
+      }
+    }
+    /* keep the focused element visible inside the scrolling form body */
+    var element = settingsFocusables[state.settingsFocus];
+    var container = byId('form-body');
+    if (element && container) {
+      var top = element.offsetTop;
+      var bottom = top + element.offsetHeight;
+      if (top < container.scrollTop) {
+        container.scrollTop = top;
+      } else if (bottom > container.scrollTop + container.clientHeight) {
+        container.scrollTop = bottom - container.clientHeight;
       }
     }
   }
@@ -678,6 +814,7 @@
         break;
       case KEYS.BACK:
       case KEYS.ESC:
+      case KEYS.BLUE:
         consume(event);
         closeSettings();
         break;

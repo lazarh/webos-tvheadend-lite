@@ -70,7 +70,8 @@
         number: number,
         name: pending.name,
         url: line,
-        logo: pending.attributes['tvg-logo'] || ''
+        logo: pending.attributes['tvg-logo'] || '',
+        id: pending.attributes['tvg-id'] || ''
       };
       channels.push(channel);
       pending = null;

@@ -68,6 +68,42 @@
     return !this.root.classList.contains('hidden');
   };
 
+  Osd.prototype.setProgram = function (current, next) {
+    var programEl = document.getElementById('osd-program');
+    var progEl = document.getElementById('osd-prog');
+    var barEl = document.getElementById('osd-bar');
+    var fillEl = document.getElementById('osd-bar-fill');
+    var descEl = document.getElementById('osd-desc');
+    var nextEl = document.getElementById('osd-next');
+    var next;
+
+    function clock(sec) {
+      var date = new Date(sec * 1000);
+      var h = date.getHours();
+      var m = date.getMinutes();
+      return (h < 10 ? '0' + h : String(h)) + ':' + (m < 10 ? '0' + m : String(m));
+    }
+
+    if (current) {
+      programEl.classList.remove('hidden');
+      progEl.textContent = current.title || '';
+      descEl.textContent = current.subtitle ? String(current.subtitle).slice(0, 160) : '';
+      var nowSec = Math.floor(Date.now() / 1000);
+      var pct = 0;
+      if (current.stop > current.start) {
+        pct = Math.max(0, Math.min(100, ((nowSec - current.start) / (current.stop - current.start)) * 100));
+      }
+      fillEl.style.width = pct + '%';
+      barEl.classList.remove('hidden');
+    } else {
+      programEl.classList.add('hidden');
+      progEl.textContent = '';
+      descEl.textContent = '';
+      barEl.classList.add('hidden');
+    }
+    nextEl.textContent = next ? 'Next: ' + (next.title || '') + ' at ' + clock(next.start) : '';
+  };
+
   /* ------------------------------------------------------- Channel list */
 
   function ChannelList() {
@@ -93,7 +129,8 @@
       if (!target || target === self.itemsEl) {
         return;
       }
-      var picked = parseInt(target.getAttribute('data-index'), 10);
+      var raw = target.getAttribute('data-index');
+      var picked = raw === 'guide' ? -1 : parseInt(raw, 10);
       if (isNaN(picked)) {
         return;
       }
@@ -111,6 +148,22 @@
 
     var fragment = document.createDocumentFragment();
     var index;
+
+    /* guide row at the top (selected index -1) */
+    var guideItem = document.createElement('li');
+    guideItem.className = 'ch-item guide-row';
+    guideItem.setAttribute('data-index', 'guide');
+    var guideNum = document.createElement('span');
+    guideNum.className = 'ch-num';
+    guideNum.textContent = 'INFO';
+    var guideName = document.createElement('span');
+    guideName.className = 'ch-name';
+    guideName.textContent = 'TV Guide';
+    guideItem.appendChild(guideNum);
+    guideItem.appendChild(guideName);
+    fragment.appendChild(guideItem);
+    this.nodes.push(guideItem);
+
     for (index = 0; index < this.channels.length; index++) {
       var item = document.createElement('li');
       item.className = 'ch-item';
@@ -133,12 +186,12 @@
   };
 
   ChannelList.prototype.setCurrent = function (index) {
-    if (this.current >= 0 && this.nodes[this.current]) {
-      this.nodes[this.current].classList.remove('current');
+    if (this.current >= -1 && this.nodes[this.current + 1]) {
+      this.nodes[this.current + 1].classList.remove('current');
     }
     this.current = index;
-    if (index >= 0 && this.nodes[index]) {
-      this.nodes[index].classList.add('current');
+    if (index >= -1 && this.nodes[index + 1]) {
+      this.nodes[index + 1].classList.add('current');
     }
   };
 
@@ -147,7 +200,7 @@
       return;
     }
     this.index = index;
-    if (this.index < 0 || this.index >= this.channels.length) {
+    if (this.index < -1 || this.index >= this.channels.length) {
       this.index = 0;
     }
     this.root.classList.remove('hidden');
@@ -167,20 +220,21 @@
     if (!count) {
       return;
     }
-    this.index = ((this.index + delta) % count + count) % count;
+    var total = count + 1; /* + the guide row */
+    this.index = ((this.index + 1 + delta) % total + total) % total - 1;
     this.highlight();
   };
 
   ChannelList.prototype.highlight = function () {
     var index;
     for (index = 0; index < this.nodes.length; index++) {
-      if (index === this.index) {
+      if (index - 1 === this.index) {
         this.nodes[index].classList.add('active');
       } else {
         this.nodes[index].classList.remove('active');
       }
     }
-    var node = this.nodes[this.index];
+    var node = this.nodes[this.index + 1];
     if (!node) {
       return;
     }

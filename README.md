@@ -14,25 +14,43 @@ Built for **webOS 3.x (Chromium 53)** and tested against webOS 3.9.3.
 - Loads the channel list from Tvheadend's M3U playlist endpoint
   `<server>/playlist/channels.m3u?profile=<profile>`.
 - HTTP Basic Auth support (username/password are stored on the TV only).
-- Selectable stream profiles: `pass`, `webtv-h264-aac-mpegts`, `htsp`.
+- Selectable stream profiles: `pass`, `webtv-h264-aac-mpegts`, `htsp`, plus an
+  automatic **fallback profile** for channels the main profile cannot play.
+- Full EPG: now/next program info on the OSD (title, description, progress
+  bar) and a full-screen TV guide with program browsing.
 - Full Magic Remote / D-pad control with an on-screen keyboard for settings.
 - Channel info OSD with a 4 second auto-hide, live status and error reporting.
 - Direct channel entry with the number keys.
-- Server URL, credentials and profile stored in `localStorage`.
+- Server URL, credentials, profile, fallback and auth mode stored in
+  `localStorage`.
 
 ## Remote control
 
 | Key | Action |
 | --- | --- |
-| `Up` / `Channel Up` (427) | Next channel |
-| `Down` / `Channel Down` (428) | Previous channel |
-| `Enter` | Open / select in the channel list |
-| `Back` (461) | Close overlay (app exits when nothing is open) |
-| `0`-`9` | Direct channel entry (tunes after 1.8 s) |
+| `Up` / `CH+` | Next channel |
+| `Down` / `CH−` | Previous channel |
+| `OK` / `Left` / `Right` | Open the channel list |
+| `Info` (457) | Open the TV guide (also an entry at the top of the channel list) |
 | `Red` (403) | Open settings |
+| `Blue` (406) | Close the current overlay / cancel |
+| `0`-`9` | Direct channel entry (tunes after 1.8 s) |
 
-Inside the channel list: `Up`/`Down` browse, `Enter` watches, `Back` closes.
-Settings and the on-screen keyboard are fully D-pad operable.
+> The **Back** button never reaches the app on webOS TV Lite - the platform
+> intercepts it and shows its own menu. The app therefore uses **Left** (close
+> channel list), **Blue** (close guide/settings/keyboard) and
+> **Left/Right while watching** (reopen channel list) instead. On standard
+> webOS, `Back` (461) also closes overlays.
+>
+> On webOS TV Lite, `CH+`/`CH−` arrive as `PageUp`/`PageDown` (33/34) - both
+> codes are mapped.
+
+Inside the channel list: `Up`/`Down` browse, `OK`/`Right` watches,
+`Left` closes, `Info` opens the guide.
+Inside the guide: `Up`/`Down` change channel, `Left`/`Right` change program,
+`OK` watches, `Blue` closes.
+Settings and the on-screen keyboard are fully D-pad operable
+(`Blue` cancels).
 
 ## Configuration
 

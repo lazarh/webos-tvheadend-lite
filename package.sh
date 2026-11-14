@@ -101,7 +101,10 @@ for member in debian-binary control.tar.gz data.tar.gz; do
   fi
 done
 
-if ! ar p "$IPK" data.tar.gz | tar -tzf - | grep -qx "./usr/palm/applications/$APP_ID/appinfo.json"; then
+# Note: grep -q inside a pipefail pipeline can kill tar with SIGPIPE, so
+# capture the listing into a variable first.
+listing="$(ar p "$IPK" data.tar.gz | tar -tzf - 2>/dev/null || true)"
+if ! grep -qx "./usr/palm/applications/$APP_ID/appinfo.json" <<< "$listing"; then
   echo "ERROR: app payload missing from $IPK" >&2
   exit 1
 fi

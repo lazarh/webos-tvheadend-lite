@@ -224,7 +224,7 @@
       this.moveRow(1);
     } else if (code === 13) {
       this.activate();
-    } else if (code === 461 || code === 27) {
+    } else if (code === 461 || code === 27 || code === 406) {
       this.finish(false);
     } else {
       return;
