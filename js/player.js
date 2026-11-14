@@ -69,7 +69,8 @@
 
     video.addEventListener('error', function () {
       if (hasSource()) {
-        emit('error', self.describeError());
+        var code = video.error ? video.error.code : 0;
+        emit('error', { code: code, text: self.describeError() });
       }
     });
   };
@@ -89,7 +90,7 @@
       return 'Decoding error - the stream may be corrupt';
     }
     if (error.code === 4) {
-      return 'Format not supported - try the webtv-h264-aac-mpegts profile';
+      return 'The TV cannot decode this stream - trying another profile';
     }
     return 'Playback error (' + error.code + ')';
   };
@@ -118,11 +119,12 @@
     return /^htsp:\/\//i.test(url || '');
   };
 
-  Player.prototype.tune = function (channel, settings, handlers) {
+  Player.prototype.tune = function (channel, settings, handlers, startStatus) {
     var self = this;
     this.tuneId++;
     var id = this.tuneId;
     this.handlers = handlers || {};
+    var initialStatus = startStatus || 'Switching...';
 
     if (this.timer) {
       window.clearTimeout(this.timer);
@@ -142,7 +144,7 @@
         /* ignore */
       }
       if (typeof handlers.error === 'function') {
-        handlers.error('HTSP streams cannot be played by the HTML5 video element - choose a different profile');
+        handlers.error({ code: 0, text: 'HTSP streams cannot be played by the HTML5 video element - choose a different profile' });
       }
       return;
     }
@@ -163,7 +165,7 @@
     }
 
     if (typeof handlers.status === 'function') {
-      handlers.status('Switching...');
+      handlers.status(initialStatus);
     }
 
     /* start the new stream after the cooldown (native player teardown) */
@@ -183,7 +185,7 @@
             return;
           }
           if (typeof self.handlers.error === 'function') {
-            self.handlers.error('Playback could not start - press ENTER to retry');
+            self.handlers.error({ code: 0, text: 'Playback could not start - press ENTER to retry' });
           }
         });
       }

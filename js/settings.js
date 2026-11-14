@@ -12,10 +12,14 @@
     username: '',
     password: '',
     profile: 'pass',
+    fallbackProfile: 'webtv-h264-aac-mpegts',
     authMode: 'auth'
   };
 
-  var PROFILES = ['pass', 'webtv-h264-aac-mpegts', 'webtv-vp8-vorbis-webm', 'htsp'];
+  var PROFILES = ['pass', 'webtv-h264-aac-mpegts', 'htsp'];
+
+  /* Values for the fallback profile field ('' = no fallback). */
+  var FALLBACKS = ['webtv-h264-aac-mpegts', 'pass', 'htsp', ''];
 
   /*
    * How the TV authenticates stream requests:
@@ -91,6 +95,16 @@
       }
       if (typeof stored.profile === 'string' && trim(stored.profile)) {
         settings.profile = trim(stored.profile);
+        /* legacy: the WebM profile crashes webOS TV Lite - coerce away */
+        if (settings.profile === 'webtv-vp8-vorbis-webm') {
+          settings.profile = 'pass';
+        }
+      }
+      if (typeof stored.fallbackProfile === 'string') {
+        settings.fallbackProfile = trim(stored.fallbackProfile);
+        if (settings.fallbackProfile === 'webtv-vp8-vorbis-webm') {
+          settings.fallbackProfile = DEFAULTS.fallbackProfile;
+        }
       }
       if (AUTH_MODES.indexOf(stored.authMode) !== -1) {
         settings.authMode = stored.authMode;
@@ -106,6 +120,7 @@
       username: trim(settings.username),
       password: String(settings.password === undefined || settings.password === null ? '' : settings.password),
       profile: normalizeProfile(settings.profile),
+      fallbackProfile: trim(settings.fallbackProfile),
       authMode: AUTH_MODES.indexOf(settings.authMode) !== -1 ? settings.authMode : DEFAULTS.authMode
     };
     try {
@@ -154,6 +169,19 @@
   }
 
   /*
+   * Replaces (or appends) the profile parameter of a Tvheadend stream URL.
+   */
+  function withProfile(url, profile) {
+    if (!url || !profile) {
+      return url;
+    }
+    if (/[?&]profile=/.test(url)) {
+      return url.replace(/([?&]profile=)[^&]*/i, '$1' + encodeURIComponent(profile));
+    }
+    return url + (url.indexOf('?') !== -1 ? '&' : '?') + 'profile=' + encodeURIComponent(profile);
+  }
+
+  /*
    * Returns the URL the <video> element should use for a stream.
    * For auth/ticket modes the playlist URLs already contain the token and no
    * credentials may be added (webOS TV Lite strips Basic auth from media
@@ -170,6 +198,7 @@
   window.TvhSettings = {
     DEFAULTS: DEFAULTS,
     PROFILES: PROFILES,
+    FALLBACKS: FALLBACKS,
     AUTH_MODES: AUTH_MODES,
     load: load,
     save: save,
@@ -178,6 +207,7 @@
     normalizeServer: normalizeServer,
     withCredentials: withCredentials,
     playlistUrl: playlistUrl,
-    streamUrl: streamUrl
+    streamUrl: streamUrl,
+    withProfile: withProfile
   };
 })(window);

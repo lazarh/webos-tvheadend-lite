@@ -184,12 +184,15 @@
     if (!node) {
       return;
     }
+    /* offsetTop is relative to .list-scroll (position: relative) */
     var top = node.offsetTop;
     var bottom = top + node.offsetHeight;
-    if (top < this.scroll.scrollTop) {
+    var scrollTop = this.scroll.scrollTop;
+    var viewHeight = this.scroll.clientHeight;
+    if (top < scrollTop) {
       this.scroll.scrollTop = top;
-    } else if (bottom > this.scroll.scrollTop + this.scroll.clientHeight) {
-      this.scroll.scrollTop = bottom - this.scroll.clientHeight;
+    } else if (bottom > scrollTop + viewHeight) {
+      this.scroll.scrollTop = bottom - viewHeight;
     }
   };
 

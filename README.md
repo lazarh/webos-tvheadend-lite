@@ -44,6 +44,7 @@ The Settings panel (Red button) stores:
 | Username | *(empty)* |
 | Password | *(empty)* |
 | Stream profile | `pass` |
+| Fallback profile | `webtv-h264-aac-mpegts` |
 | Stream auth | `persistent token` |
 
 Two quick presets are available in the panel: the LAN server
@@ -52,6 +53,13 @@ Two quick presets are available in the panel: the LAN server
 
 The **Stream profile** field cycles through the built-in profile names with
 Left/Right; press **ENTER** to type any custom Tvheadend profile name.
+
+The **Fallback profile** (Left/Right to change, ENTER to type a custom name) is
+tried automatically when a channel cannot be played with the main profile -
+for example DVB channels play with `pass` (zero server CPU) while IPTV
+channels in MPEG-2/HEVC are automatically retried with the transcoding
+profile. The choice is remembered per channel for the session. Select *(off)*
+to disable the fallback.
 
 The **Stream auth** field (Left/Right to change) controls how the TV
 authenticates stream requests:
@@ -69,14 +77,12 @@ authenticates stream requests:
 
 ### Stream profiles
 
-- **`pass`** - no transcoding. Best quality and lowest CPU load; the TV must be
-  able to decode the broadcast codecs.
-- **`webtv-h264-aac-mpegts`** - transcodes to H.264 + AAC in MPEG-TS. This is
-  the profile to use on **webOS TV Lite** TVs (Chromium 38): it plays reliably
-  and zaps correctly.
-- **`webtv-vp8-vorbis-webm`** - transcodes to WebM (VP8 + Vorbis). Avoid on
-  webOS TV Lite: live WebM streams were observed to crash the app when
-  switching channels.
+- **`pass`** - no transcoding. Best quality and zero CPU load; DVB channels
+  usually play directly while IPTV channels whose codecs the TV cannot decode
+  fall back to the transcode profile automatically.
+- **`webtv-h264-aac-mpegts`** - transcodes to H.264 + AAC in MPEG-TS. The
+  reliable format on **webOS TV Lite** (Chromium 38); used as the fallback
+  profile by default.
 - **`htsp`** - produces `htsp://` URLs, which the HTML5 video element cannot
   play. The app detects this and shows a clear error instead of a black screen.
 
@@ -84,9 +90,10 @@ authenticates stream requests:
 
 - `#EXTM3U` parsing uses the `tvg-chno` attribute for channel numbers and falls
   back to the playlist position.
-- Credentials are injected into stream URLs (`http://user:pass@host/...`)
-  because a `<video>` element cannot send an `Authorization` header. Chromium 53
-  still supports userinfo in URLs.
+- The playlist is fetched over XHR (Basic auth works there); stream URLs carry
+  auth tokens (see *Stream auth* above) because a `<video>` element cannot send
+  an `Authorization` header - and webOS TV Lite strips credentials from media
+  URLs entirely.
 - If the channel list cannot be fetched, the app reports whether it was an
   authentication, network/CORS or HTTP error. When using an nginx reverse proxy,
   make sure it forwards `/playlist` and `/stream` and does not strip the
@@ -185,7 +192,7 @@ Notes verified on an LG **webOS TV Lite 3.9.3** (Chromium 38) TV:
 - The native media pipeline crashes if a new live stream starts immediately
   after another one stopped. The app therefore waits ~3 s between stopping and
   starting a stream (the OSD shows *Switching...* while it waits).
-- Live WebM (VP8) streams crash the app when switching channels; MPEG-TS
-  H.264/AAC is the reliable format.
+- Live WebM (VP8) streams crash the app on channel switch - the app no longer
+  offers that profile; MPEG-TS H.264/AAC is the reliable format.
 - HLS (`.m3u8`) plays natively, but Tvheadend has no HLS output, so the
   transcoding profiles above are used instead.

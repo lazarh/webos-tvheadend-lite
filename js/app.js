@@ -18,10 +18,16 @@
   };
 
   var PROFILE_NOTES = {
-    'pass': 'No transcoding - works when the TV can decode the broadcast codecs',
-    'webtv-h264-aac-mpegts': 'Transcodes every channel to H.264 + AAC in MPEG-TS (recommended for webOS TV Lite)',
-    'webtv-vp8-vorbis-webm': 'Transcodes to WebM (VP8 + Vorbis) - unstable on webOS TV Lite',
+    'pass': 'No transcoding - DVB channels usually work; IPTV channels may need the fallback',
+    'webtv-h264-aac-mpegts': 'Transcodes every channel to H.264 + AAC in MPEG-TS',
     'htsp': 'HTSP protocol - the HTML5 video element cannot play this'
+  };
+
+  var FALLBACK_NOTES = {
+    'webtv-h264-aac-mpegts': 'Transcoding profile tried automatically when a channel cannot play',
+    'pass': 'Raw stream tried automatically when a channel cannot play',
+    'htsp': 'HTSP protocol - not playable by the HTML5 video element',
+    '': 'No fallback - channels that cannot play show an error'
   };
 
   var AUTH_NOTES = {
@@ -36,6 +42,7 @@
     channels: [],
     currentIndex: -1,
     currentUrl: '',
+    channelProfiles: {},
     settingsOpen: false,
     settingsFocus: 0,
     values: null,
@@ -313,7 +320,7 @@
     }
   }
 
-  function tuneIndex(index) {
+  function tuneIndex(index, startStatus, attempts) {
     var count = state.channels.length;
     if (!count) {
       message.show('No channels', 'The playlist did not contain any channels.', 'RED: settings');
@@ -325,13 +332,27 @@
     var channel = state.channels[state.currentIndex];
     state.currentUrl = channel.url;
 
-    var retried = false;
+    /* per-channel profile memory: base URL without the profile parameter */
+    var baseKey = channel.url.replace(/profile=[^&]*/i, '');
+    var effectiveProfile = state.channelProfiles[baseKey] || state.settings.profile;
+    var effectiveChannel = {
+      number: channel.number,
+      name: channel.name,
+      url: window.TvhSettings.withProfile(channel.url, effectiveProfile),
+      logo: channel.logo
+    };
+
+    var a = attempts || { ticket: false, fallback: false };
+
+    if (window.__tvhTestLog) {
+      window.__tvhTestLog.push({ type: 'tune', profile: effectiveProfile });
+    }
 
     channelList.setCurrent(state.currentIndex);
     message.hide();
-    osd.show(channel, 'Switching...');
+    osd.show(channel, startStatus || 'Switching...');
 
-    player.tune(channel, state.settings, {
+    player.tune(effectiveChannel, state.settings, {
       status: function (text) {
         if (osd.isVisible()) {
           osd.setStatus(text);
@@ -341,23 +362,43 @@
         osd.setStatus('Playing');
         osd.scheduleHide(4000);
       },
-      error: function (text) {
-        /* Expired ticket? Refresh once and retry the same channel. */
-        if (state.settings.authMode === 'ticket' && !retried) {
-          retried = true;
+      error: function (info) {
+        var code = (info && info.code) || 0;
+        var text = (info && info.text) || 'Playback error';
+
+        if (window.__tvhTestLog) {
+          window.__tvhTestLog.push({ type: 'error', code: code });
+        }
+
+        /* 1) ticket mode: refresh the playlist once and retry (an expired
+           ticket also surfaces as error code 4 on this TV) */
+        if (state.settings.authMode === 'ticket' && !a.ticket) {
+          a.ticket = true;
           osd.setStatus('Refreshing tickets...');
           refreshPlaylistSilently(function () {
-            tuneIndex(state.currentIndex);
+            tuneIndex(state.currentIndex, undefined, a);
           }, function () {
             osd.show(channel, text, true);
             osd.clearTimer();
           });
           return;
         }
+
+        /* 2) decode/format failure: retry the channel with the fallback profile */
+        if ((code === 3 || code === 4) && !a.fallback) {
+          var fallback = state.settings.fallbackProfile;
+          if (fallback && fallback !== effectiveProfile && fallback !== 'htsp') {
+            a.fallback = true;
+            state.channelProfiles[baseKey] = fallback;
+            tuneIndex(state.currentIndex, 'Trying fallback profile...', a);
+            return;
+          }
+        }
+
         osd.show(channel, text, true);
         osd.clearTimer();
       }
-    });
+    }, startStatus || 'Switching...');
   }
 
   function zap(delta) {
@@ -466,6 +507,8 @@
     setText('value-password', values.password ? bullets : '(none)');
     setText('value-profile', values.profile || window.TvhSettings.DEFAULTS.profile);
     setText('profile-note', PROFILE_NOTES[values.profile] || 'Custom Tvheadend stream profile');
+    setText('value-fallback', values.fallbackProfile || '(off)');
+    setText('fallback-note', FALLBACK_NOTES[values.fallbackProfile || ''] || 'Custom fallback profile');
     setText('value-auth', values.authMode);
     setText('auth-note', AUTH_NOTES[values.authMode] || '');
     highlightSettingsFocus();
@@ -481,6 +524,7 @@
       username: state.settings.username,
       password: state.settings.password,
       profile: state.settings.profile,
+      fallbackProfile: state.settings.fallbackProfile,
       authMode: state.settings.authMode
     };
     state.settingsFocus = 0;
@@ -523,14 +567,29 @@
     element.classList.add('hidden');
   }
 
-  function cycleList(listName, valuesKey, delta) {
-    var list = listName === 'profiles' ? window.TvhSettings.PROFILES : window.TvhSettings.AUTH_MODES;
-    var index = list.indexOf(state.values[valuesKey]);
+  var CYCLE_LISTS = {
+    profile: window.TvhSettings.PROFILES,
+    fallback: window.TvhSettings.FALLBACKS,
+    auth: window.TvhSettings.AUTH_MODES
+  };
+  var CYCLE_KEYS = {
+    profile: 'profile',
+    fallback: 'fallbackProfile',
+    auth: 'authMode'
+  };
+
+  function cycleField(action, delta) {
+    var list = CYCLE_LISTS[action];
+    var key = CYCLE_KEYS[action];
+    if (!list || !key) {
+      return;
+    }
+    var index = list.indexOf(state.values[key]);
     if (index === -1) {
       index = delta > 0 ? -1 : 0;
     }
     index = (index + delta + list.length) % list.length;
-    state.values[valuesKey] = list[index];
+    state.values[key] = list[index];
     hideSettingsError();
     renderSettings();
   }
@@ -544,8 +603,10 @@
       renderSettings();
     } else if (action === 'profile') {
       openKeyboardFor('profile', element.getAttribute('data-label'));
+    } else if (action === 'fallback') {
+      openKeyboardFor('fallbackProfile', element.getAttribute('data-label'));
     } else if (action === 'auth') {
-      cycleList('auths', 'authMode', 1);
+      cycleField('auth', 1);
     } else if (action === 'save') {
       saveSettings();
     } else if (action === 'cancel') {
@@ -555,7 +616,7 @@
 
   function openKeyboardFor(key, label) {
     keyboard.open(label, state.values[key] || '', function (value) {
-      if (key === 'server' || key === 'profile') {
+      if (key === 'server' || key === 'profile' || key === 'fallbackProfile') {
         value = value.replace(/^\s+|\s+$/g, '');
       }
       if (key === 'profile' && !value) {
@@ -587,19 +648,25 @@
         break;
       case KEYS.LEFT:
         if (action === 'profile') {
-          cycleList('profiles', 'profile', -1);
+          cycleField('profile', -1);
+          consume(event);
+        } else if (action === 'fallback') {
+          cycleField('fallback', -1);
           consume(event);
         } else if (action === 'auth') {
-          cycleList('auths', 'authMode', -1);
+          cycleField('auth', -1);
           consume(event);
         }
         break;
       case KEYS.RIGHT:
         if (action === 'profile') {
-          cycleList('profiles', 'profile', 1);
+          cycleField('profile', 1);
+          consume(event);
+        } else if (action === 'fallback') {
+          cycleField('fallback', 1);
           consume(event);
         } else if (action === 'auth') {
-          cycleList('auths', 'authMode', 1);
+          cycleField('auth', 1);
           consume(event);
         }
         break;
