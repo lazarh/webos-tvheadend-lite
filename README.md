@@ -89,6 +89,25 @@ The script produces a Debian-style IPK (`debian-binary`, `control.tar.gz`,
 structure afterwards. Icons are regenerated with ImageMagick if missing
 (`tools/make_icons.sh`).
 
+> The ar container is written directly with `printf`/`cat` instead of GNU
+> `ar` because the webOS install service expects ares-package's header layout
+> (mode `100644`, space-padded names, no trailing `/`) and rejects archives
+> built by GNU `ar` with "Failed to extract package". Only `tar`, `gzip` and
+> coreutils are required.
+
+### Installer troubleshooting
+
+- **`ares-install` crashes with `isDate is not a function`** on Node 22/24:
+  ares-cli 2.4.0 depends on `ssh2-streams` 0.8, which uses the removed
+  `util.isDate` API. Use Node 20, or patch
+  `…/ares-cli/node_modules/ssh2-streams/lib/sftp.js`:
+  `var isDate = util.isDate || function(v) { return v instanceof Date; };`
+- **`rm: can't remove '/media/developer/temp': Permission denied`**: some TVs
+  mount `/media/developer` `root:root 775`, so the `prisoner` user cannot
+  recreate the temp folder. Point ares at a writable staging path in
+  `…/ares-cli/files/conf/config.json`:
+  `"tempDirForIpk": "/tmp/developer/temp"`.
+
 ## Install on the TV
 
 1. Enable **Developer Mode** on the TV (Developer Mode app) and install the

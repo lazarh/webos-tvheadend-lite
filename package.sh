@@ -67,15 +67,29 @@ tar -C "$CTRL_DIR" "${TAR_OPTS[@]}" -cf - . | gzip -9n > "$BUILD_DIR/control.tar
 tar -C "$DATA_DIR" "${TAR_OPTS[@]}" -cf - .       | gzip -9n > "$BUILD_DIR/data.tar.gz"
 
 # ----------------------------------------------------------- assemble
+# The webOS install service rejects archives written by GNU `ar` - it expects
+# the header layout used by ares-package (mode 100644, space padded member
+# names, no trailing slash). Build the ar container directly with printf/cat;
+# only tar, gzip and coreutils are needed.
 echo ">> Assembling $PKG_NAME"
 mkdir -p "$OUT_DIR"
 rm -f "$IPK"
-(
-  cd "$BUILD_DIR"
-  # "D" makes ar deterministic (zero timestamps); fall back if unsupported.
-  ar rcsD "$IPK" debian-binary control.tar.gz data.tar.gz 2>/dev/null \
-    || ar rcs "$IPK" debian-binary control.tar.gz data.tar.gz
-)
+
+write_ar_member() {
+  local file="$1" name size
+  name="$(basename "$file")"
+  size="$(wc -c < "$file" | tr -d '[:space:]')"
+  printf '%-16s%-12s%-6s%-6s%-8s%-10s`\n' "$name" 0 0 0 100644 "$size" >> "$IPK"
+  cat "$file" >> "$IPK"
+  if (( size % 2 )); then
+    printf '\n' >> "$IPK"
+  fi
+}
+
+printf '!<arch>\n' > "$IPK"
+write_ar_member "$BUILD_DIR/debian-binary"
+write_ar_member "$BUILD_DIR/control.tar.gz"
+write_ar_member "$BUILD_DIR/data.tar.gz"
 
 # ------------------------------------------------------------- verify
 echo ">> Verifying package"
