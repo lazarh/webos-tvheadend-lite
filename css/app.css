@@ -401,13 +401,17 @@ body {
 
 .guide-block {
   position: absolute;
-  top: 16px;
-  bottom: 16px;
+  top: 12px;
+  bottom: 12px;
   background: rgba(24, 48, 82, 0.9);
   border: 2px solid rgba(80, 140, 220, 0.35);
   border-radius: 10px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   overflow: hidden;
+}
+
+.guide-block.narrow .guide-block-title {
+  display: none;
 }
 
 .guide-block.selected {
@@ -417,7 +421,7 @@ body {
 }
 
 .guide-block-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: #eaf2ff;
   white-space: nowrap;
@@ -426,8 +430,8 @@ body {
 }
 
 .guide-block-time {
-  margin-top: 4px;
-  font-size: 17px;
+  margin-top: 3px;
+  font-size: 15px;
   color: #9fb4cc;
 }
 
@@ -440,19 +444,47 @@ body {
   z-index: 5;
 }
 
-.guide-desc {
-  height: 118px;
-  padding: 10px 24px;
-  font-size: 21px;
-  line-height: 1.35;
-  color: #dbe8f6;
-  border-top: 1px solid rgba(80, 140, 220, 0.2);
-  white-space: normal;
+.guide-info {
+  width: 540px;
+  flex: none;
+  border-left: 1px solid rgba(80, 140, 220, 0.25);
+  background: rgba(8, 16, 28, 0.55);
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
+}
+
+.guide-info-label {
+  font-size: 17px;
+  color: #8ba3bd;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.guide-info-title {
+  margin-top: 8px;
+  font-size: 30px;
+  font-weight: 600;
+  color: #ffd76a;
+  line-height: 1.25;
+}
+
+.guide-info-time {
+  margin-top: 6px;
+  font-size: 21px;
+  color: #7cc4ff;
+}
+
+.guide-info-desc {
+  margin-top: 12px;
+  flex: 1;
+  font-size: 21px;
+  line-height: 1.4;
+  color: #dbe8f6;
+  white-space: normal;
   word-break: break-word;
+  overflow-y: auto;
 }
 
 /* ------------------------------------------------------- settings */

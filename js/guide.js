@@ -25,7 +25,9 @@
     this.channelsEl = byId('guide-channels');
     this.timesEl = byId('guide-times');
     this.stripEl = byId('guide-strip');
-    this.descEl = byId('guide-desc');
+    this.infoTitleEl = byId('guide-info-title');
+    this.infoTimeEl = byId('guide-info-time');
+    this.infoDescEl = byId('guide-info-desc');
 
     this.channels = [];
     this.rows = [];
@@ -185,9 +187,9 @@
     this.events = [];
     this.programIndex = 0;
     this.renderStrip();
-    this.descEl.textContent = 'Loading program guide...';
+    this.renderInfo(null);
     if (!channel || !channel.id || typeof this.eventsProvider !== 'function') {
-      this.descEl.textContent = 'No program guide for this channel';
+      this.infoDescEl.textContent = 'No program guide for this channel';
       return;
     }
     this.eventsProvider(channel, function (error, events) {
@@ -195,12 +197,12 @@
         return; /* focus moved while loading */
       }
       if (error) {
-        self.descEl.textContent = error.message || 'Program guide unavailable';
+        self.infoDescEl.textContent = error.message || 'Program guide unavailable';
         return;
       }
       var nowSec = Math.floor(Date.now() / 1000);
       self.winStart = nowSec;
-      self.winEnd = nowSec + 3 * 3600;
+      self.winEnd = nowSec + 2 * 3600;
       self.events = window.TvhEpg.inWindow(events, self.winStart, self.winEnd);
       /* focus the program that is on now */
       var i;
@@ -261,7 +263,7 @@
         if (width < 0.5) { width = 0.5; }
 
         var block = document.createElement('div');
-        block.className = 'guide-block' + (index === self.programIndex ? ' selected' : '');
+        block.className = 'guide-block' + (index === self.programIndex ? ' selected' : '') + (width < 8 ? ' narrow' : '');
         block.style.left = left + '%';
         block.style.width = width + '%';
 
@@ -270,7 +272,7 @@
         titleEl.textContent = event.title || '(no title)';
         var timeEl = document.createElement('div');
         timeEl.className = 'guide-block-time';
-        timeEl.textContent = clock(event.start * 1000) + ' - ' + clock(event.stop * 1000);
+        timeEl.textContent = clock(event.start * 1000);
 
         block.appendChild(titleEl);
         block.appendChild(timeEl);
@@ -281,15 +283,20 @@
     this.renderDescription();
   };
 
-  Guide.prototype.renderDescription = function () {
-    var event = this.events[this.programIndex];
+  Guide.prototype.renderInfo = function (event) {
     if (!event) {
-      this.descEl.textContent = 'No program information';
+      this.infoTitleEl.textContent = '\u00a0';
+      this.infoTimeEl.textContent = '\u00a0';
+      this.infoDescEl.textContent = this.events.length ? '\u00a0' : 'Loading program guide...';
       return;
     }
-    var head = clock(event.start * 1000) + ' - ' + clock(event.stop * 1000) + '  ' + (event.title || '');
-    var body = event.description || event.subtitle || '';
-    this.descEl.textContent = body ? head + '\n' + body : head;
+    this.infoTitleEl.textContent = event.title || '(no title)';
+    this.infoTimeEl.textContent = clock(event.start * 1000) + ' - ' + clock(event.stop * 1000);
+    this.infoDescEl.textContent = event.description || event.subtitle || '';
+  };
+
+  Guide.prototype.renderDescription = function () {
+    this.renderInfo(this.events[this.programIndex]);
   };
 
   window.TvhGuide = Guide;
