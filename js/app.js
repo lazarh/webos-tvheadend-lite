@@ -427,10 +427,15 @@
     /* per-channel profile memory: base URL without the profile parameter */
     var baseKey = channel.url.replace(/profile=[^&]*/i, '');
     var effectiveProfile = state.channelProfiles[baseKey] || state.settings.profile;
+    var streamUrl = window.TvhSettings.withProfile(channel.url, effectiveProfile);
+    /* smaller server-side queue: first bytes arrive faster (default is 1.5 MB) */
+    if (!/[?&]qsize=/.test(streamUrl)) {
+      streamUrl += (streamUrl.indexOf('?') !== -1 ? '&' : '?') + 'qsize=300000';
+    }
     var effectiveChannel = {
       number: channel.number,
       name: channel.name,
-      url: window.TvhSettings.withProfile(channel.url, effectiveProfile),
+      url: streamUrl,
       logo: channel.logo
     };
 
