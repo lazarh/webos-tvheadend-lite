@@ -44,6 +44,7 @@ The Settings panel (Red button) stores:
 | Username | *(empty)* |
 | Password | *(empty)* |
 | Stream profile | `pass` |
+| Stream auth | `persistent token` |
 
 Two quick presets are available in the panel: the LAN server
 (`http://tvheadend.local:9981`) and the internet/nginx proxy
@@ -52,16 +53,30 @@ Two quick presets are available in the panel: the LAN server
 The **Stream profile** field cycles through the built-in profile names with
 Left/Right; press **ENTER** to type any custom Tvheadend profile name.
 
+The **Stream auth** field (Left/Right to change) controls how the TV
+authenticates stream requests:
+
+- **persistent token** (default, recommended) - the channel playlist carries
+  permanent `?auth=` tokens, so the `<video>` element needs no credentials.
+  Enable it in Tvheadend: *Configuration → Users → Passwords → edit the user →
+  tick **Persistent authentication** → Save*.
+- **5-minute tickets** - uses `?ticket=` tokens; works without any server-side
+  change. The app refreshes the playlist automatically every 4 minutes and
+  retries once on a failed tune.
+- **Basic in URL** - embeds `user:pass` in the stream URL. Fine on standard
+  webOS, but **webOS TV Lite strips credentials from media URLs**, so use one
+  of the token modes there.
+
 ### Stream profiles
 
 - **`pass`** - no transcoding. Best quality and lowest CPU load; the TV must be
-  able to decode the broadcast codecs (webOS handles H.264/AAC MPEG-TS via its
-  native media pipeline).
-- **`webtv-h264-aac-mpegts`** - transcodes to H.264 + AAC in MPEG-TS. Use it for
-  channels whose codecs the TV cannot decode.
-- **`webtv-vp8-vorbis-webm`** - transcodes to WebM (VP8 + Vorbis). This is the
-  most compatible option for Chromium 53 when MPEG-TS is rejected; it costs more
-  server CPU.
+  able to decode the broadcast codecs.
+- **`webtv-h264-aac-mpegts`** - transcodes to H.264 + AAC in MPEG-TS. This is
+  the profile to use on **webOS TV Lite** TVs (Chromium 38): it plays reliably
+  and zaps correctly.
+- **`webtv-vp8-vorbis-webm`** - transcodes to WebM (VP8 + Vorbis). Avoid on
+  webOS TV Lite: live WebM streams were observed to crash the app when
+  switching channels.
 - **`htsp`** - produces `htsp://` URLs, which the HTML5 video element cannot
   play. The app detects this and shows a clear error instead of a black screen.
 
@@ -161,4 +176,16 @@ tools/make_icons.sh       placeholder icon generator (ImageMagick)
 
 The JavaScript intentionally avoids optional chaining, nullish coalescing,
 `async`/`await`, `fetch`, ES modules and CSS grid so the app runs on
-Chromium 53 / webOS 3.x.
+Chromium 38/53 (webOS TV 3.x / 4.x).
+
+Notes verified on an LG **webOS TV Lite 3.9.3** (Chromium 38) TV:
+
+- The media element does not send Basic auth from URL userinfo - always use
+  the token modes (persistent token or tickets) on this platform.
+- The native media pipeline crashes if a new live stream starts immediately
+  after another one stopped. The app therefore waits ~3 s between stopping and
+  starting a stream (the OSD shows *Switching...* while it waits).
+- Live WebM (VP8) streams crash the app when switching channels; MPEG-TS
+  H.264/AAC is the reliable format.
+- HLS (`.m3u8`) plays natively, but Tvheadend has no HLS output, so the
+  transcoding profiles above are used instead.

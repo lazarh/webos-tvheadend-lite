@@ -1,6 +1,6 @@
 /*
  * Tvheadend TV - settings storage and URL helpers.
- * Plain ES5 so it runs on webOS 3.x (Chromium 53).
+ * Plain ES5 so it runs on webOS 3.x (Chromium 38/53).
  */
 (function (window, undefined) {
   'use strict';
@@ -11,10 +11,23 @@
     server: 'http://tvheadend.local:9981',
     username: '',
     password: '',
-    profile: 'pass'
+    profile: 'pass',
+    authMode: 'auth'
   };
 
   var PROFILES = ['pass', 'webtv-h264-aac-mpegts', 'webtv-vp8-vorbis-webm', 'htsp'];
+
+  /*
+   * How the TV authenticates stream requests:
+   *   auth   - persistent token: playlist URLs carry ?auth=<token>, no
+   *            credentials are needed for playback (enable "Persistent
+   *            authentication" for the user in Tvheadend).
+   *   ticket - short-lived tickets: playlist URLs carry ?ticket=<token>,
+   *            valid ~5 minutes; the app refreshes the playlist automatically.
+   *   url    - Basic auth embedded in the stream URL (works on standard
+   *            webOS; NOT on webOS TV Lite, whose media element strips it).
+   */
+  var AUTH_MODES = ['auth', 'ticket', 'url'];
 
   function clone(object) {
     var copy = {};
@@ -79,6 +92,9 @@
       if (typeof stored.profile === 'string' && trim(stored.profile)) {
         settings.profile = trim(stored.profile);
       }
+      if (AUTH_MODES.indexOf(stored.authMode) !== -1) {
+        settings.authMode = stored.authMode;
+      }
     }
     settings.server = normalizeServer(settings.server);
     return settings;
@@ -89,7 +105,8 @@
       server: normalizeServer(settings.server),
       username: trim(settings.username),
       password: String(settings.password === undefined || settings.password === null ? '' : settings.password),
-      profile: normalizeProfile(settings.profile)
+      profile: normalizeProfile(settings.profile),
+      authMode: AUTH_MODES.indexOf(settings.authMode) !== -1 ? settings.authMode : DEFAULTS.authMode
     };
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
@@ -108,9 +125,8 @@
   }
 
   /*
-   * Adds HTTP Basic Auth credentials to a URL (the <video> element cannot
-   * send an Authorization header, so credentials must live in the URL).
-   * Chromium 53 still supports userinfo in URLs.
+   * Adds HTTP Basic Auth credentials to a URL. Used for the playlist XHR
+   * request (the <video> element cannot send an Authorization header).
    */
   function withCredentials(url, settings) {
     if (!url || !settings || !settings.username) {
@@ -132,18 +148,36 @@
   function playlistUrl(settings) {
     var base = normalizeServer(settings.server);
     var profile = normalizeProfile(settings.profile);
-    return base + '/playlist/channels.m3u?profile=' + encodeURIComponent(profile);
+    var mode = AUTH_MODES.indexOf(settings.authMode) !== -1 ? settings.authMode : DEFAULTS.authMode;
+    var type = mode === 'auth' ? '/auth' : (mode === 'ticket' ? '/ticket' : '');
+    return base + '/playlist' + type + '/channels.m3u?profile=' + encodeURIComponent(profile);
+  }
+
+  /*
+   * Returns the URL the <video> element should use for a stream.
+   * For auth/ticket modes the playlist URLs already contain the token and no
+   * credentials may be added (webOS TV Lite strips Basic auth from media
+   * URLs). For url mode the credentials are embedded in the URL.
+   */
+  function streamUrl(url, settings) {
+    var mode = AUTH_MODES.indexOf(settings.authMode) !== -1 ? settings.authMode : DEFAULTS.authMode;
+    if (mode === 'url') {
+      return withCredentials(url, settings);
+    }
+    return url;
   }
 
   window.TvhSettings = {
     DEFAULTS: DEFAULTS,
     PROFILES: PROFILES,
+    AUTH_MODES: AUTH_MODES,
     load: load,
     save: save,
     hasSettings: hasSettings,
     validate: validate,
     normalizeServer: normalizeServer,
     withCredentials: withCredentials,
-    playlistUrl: playlistUrl
+    playlistUrl: playlistUrl,
+    streamUrl: streamUrl
   };
 })(window);

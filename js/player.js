@@ -1,14 +1,25 @@
 /*
  * Tvheadend TV - native HTML5 <video> player wrapper.
- * The webOS media pipeline plays MPEG-TS streams in the video element.
+ *
+ * webOS TV Lite (Chromium 38) notes, established by on-device testing:
+ * - The media element does NOT send Basic auth from URL userinfo, so the app
+ *   uses Tvheadend auth tokens/tickets instead (see settings.js).
+ * - The native pipeline crashes if a new live stream starts too soon after
+ *   the previous one stopped, so every tune waits TUNE_COOLDOWN after the
+ *   stop before starting the new stream.
+ * - Live WebM (VP8) streams are unstable on this platform; MPEG-TS H.264/AAC
+ *   (profile webtv-h264-aac-mpegts) plays and zaps reliably.
  */
 (function (window, undefined) {
   'use strict';
+
+  var TUNE_COOLDOWN = 3000;
 
   function Player(video) {
     this.video = video;
     this.handlers = {};
     this.tuneId = 0;
+    this.timer = null;
     this.bind();
   }
 
@@ -78,18 +89,18 @@
       return 'Decoding error - the stream may be corrupt';
     }
     if (error.code === 4) {
-      return 'Format not supported - try another stream profile';
+      return 'Format not supported - try the webtv-h264-aac-mpegts profile';
     }
     return 'Playback error (' + error.code + ')';
-  };
-
-  Player.prototype.isHtsp = function (url) {
-    return /^htsp:\/\//i.test(url || '');
   };
 
   Player.prototype.stop = function () {
     this.tuneId++;
     this.handlers = {};
+    if (this.timer) {
+      window.clearTimeout(this.timer);
+      this.timer = null;
+    }
     try {
       this.video.pause();
     } catch (error) {
@@ -103,43 +114,80 @@
     }
   };
 
+  Player.prototype.isHtsp = function (url) {
+    return /^htsp:\/\//i.test(url || '');
+  };
+
   Player.prototype.tune = function (channel, settings, handlers) {
     var self = this;
     this.tuneId++;
     var id = this.tuneId;
     this.handlers = handlers || {};
 
+    if (this.timer) {
+      window.clearTimeout(this.timer);
+      this.timer = null;
+    }
+
     if (this.isHtsp(channel.url)) {
-      this.stop();
+      try {
+        this.video.pause();
+      } catch (error) {
+        /* ignore */
+      }
+      this.video.removeAttribute('src');
+      try {
+        this.video.load();
+      } catch (loadError) {
+        /* ignore */
+      }
       if (typeof handlers.error === 'function') {
-        handlers.error('HTSP streams cannot be played by the HTML5 video element - choose the "pass" profile');
+        handlers.error('HTSP streams cannot be played by the HTML5 video element - choose a different profile');
       }
       return;
     }
 
-    var url = window.TvhSettings.withCredentials(channel.url, settings);
+    var url = window.TvhSettings.streamUrl(channel.url, settings);
 
+    /* stop the current stream first */
     try {
       this.video.pause();
-    } catch (pauseError) {
+    } catch (error) {
       /* ignore */
     }
     this.video.removeAttribute('src');
-    this.video.load();
-    this.video.src = url;
-    this.video.load();
-
-    var promise = this.video.play();
-    if (promise && typeof promise.catch === 'function') {
-      promise.catch(function () {
-        if (id !== self.tuneId) {
-          return;
-        }
-        if (typeof handlers.error === 'function') {
-          handlers.error('Autoplay was blocked - press ENTER to retry');
-        }
-      });
+    try {
+      this.video.load();
+    } catch (loadError) {
+      /* ignore */
     }
+
+    if (typeof handlers.status === 'function') {
+      handlers.status('Switching...');
+    }
+
+    /* start the new stream after the cooldown (native player teardown) */
+    this.timer = window.setTimeout(function () {
+      if (id !== self.tuneId) {
+        return;
+      }
+      if (typeof self.handlers.status === 'function') {
+        self.handlers.status('Connecting...');
+      }
+      self.video.src = url;
+      self.video.load();
+      var promise = self.video.play();
+      if (promise && typeof promise.catch === 'function') {
+        promise.catch(function () {
+          if (id !== self.tuneId) {
+            return;
+          }
+          if (typeof self.handlers.error === 'function') {
+            self.handlers.error('Playback could not start - press ENTER to retry');
+          }
+        });
+      }
+    }, TUNE_COOLDOWN);
   };
 
   window.TvhPlayer = Player;

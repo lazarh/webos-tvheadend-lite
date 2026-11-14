@@ -19,9 +19,15 @@
 
   var PROFILE_NOTES = {
     'pass': 'No transcoding - works when the TV can decode the broadcast codecs',
-    'webtv-h264-aac-mpegts': 'Transcodes every channel to H.264 + AAC in MPEG-TS',
-    'webtv-vp8-vorbis-webm': 'Transcodes to WebM (VP8 + Vorbis) - most browser compatible',
+    'webtv-h264-aac-mpegts': 'Transcodes every channel to H.264 + AAC in MPEG-TS (recommended for webOS TV Lite)',
+    'webtv-vp8-vorbis-webm': 'Transcodes to WebM (VP8 + Vorbis) - unstable on webOS TV Lite',
     'htsp': 'HTSP protocol - the HTML5 video element cannot play this'
+  };
+
+  var AUTH_NOTES = {
+    'auth': 'Persistent token - enable "Persistent authentication" for the user in Tvheadend (Users > Passwords)',
+    'ticket': '5-minute tickets - works without server changes, refreshed automatically',
+    'url': 'Basic auth in the stream URL - for standard webOS TVs only'
   };
 
   var state = {
@@ -34,7 +40,8 @@
     settingsFocus: 0,
     values: null,
     digits: '',
-    digitTimer: null
+    digitTimer: null,
+    ticketTimer: null
   };
 
   var player = null;
@@ -251,7 +258,59 @@
     }
 
     message.hide();
+    scheduleTicketRefresh();
     tuneIndex(index);
+  }
+
+  /*
+   * Silently re-fetches the playlist (ticket mode: tokens expire after
+   * ~5 minutes). The playing stream is not interrupted; only the stored
+   * channel URLs are replaced so future tunes use fresh tickets.
+   */
+  function refreshPlaylistSilently(onDone, onError) {
+    if (!state.configured) {
+      return;
+    }
+    window.TvhPlaylist.fetch(state.settings, function (error, channels) {
+      if (error) {
+        if (typeof onError === 'function') {
+          onError();
+        }
+        return;
+      }
+      var current = state.channels[state.currentIndex];
+      state.channels = channels;
+      channelList.setChannels(channels);
+
+      var index = 0;
+      var i;
+      if (current) {
+        for (i = 0; i < channels.length; i++) {
+          if (channels[i].number === current.number && channels[i].name === current.name) {
+            index = i;
+            break;
+          }
+        }
+      }
+      state.currentIndex = index;
+      state.currentUrl = channels[index].url;
+      channelList.setCurrent(index);
+      if (typeof onDone === 'function') {
+        onDone();
+      }
+    });
+  }
+
+  function scheduleTicketRefresh() {
+    if (state.ticketTimer) {
+      window.clearInterval(state.ticketTimer);
+      state.ticketTimer = null;
+    }
+    if (state.settings.authMode === 'ticket') {
+      state.ticketTimer = window.setInterval(function () {
+        refreshPlaylistSilently();
+      }, 240000);
+    }
   }
 
   function tuneIndex(index) {
@@ -266,9 +325,11 @@
     var channel = state.channels[state.currentIndex];
     state.currentUrl = channel.url;
 
+    var retried = false;
+
     channelList.setCurrent(state.currentIndex);
     message.hide();
-    osd.show(channel, 'Connecting...');
+    osd.show(channel, 'Switching...');
 
     player.tune(channel, state.settings, {
       status: function (text) {
@@ -281,6 +342,18 @@
         osd.scheduleHide(4000);
       },
       error: function (text) {
+        /* Expired ticket? Refresh once and retry the same channel. */
+        if (state.settings.authMode === 'ticket' && !retried) {
+          retried = true;
+          osd.setStatus('Refreshing tickets...');
+          refreshPlaylistSilently(function () {
+            tuneIndex(state.currentIndex);
+          }, function () {
+            osd.show(channel, text, true);
+            osd.clearTimer();
+          });
+          return;
+        }
         osd.show(channel, text, true);
         osd.clearTimer();
       }
@@ -393,6 +466,8 @@
     setText('value-password', values.password ? bullets : '(none)');
     setText('value-profile', values.profile || window.TvhSettings.DEFAULTS.profile);
     setText('profile-note', PROFILE_NOTES[values.profile] || 'Custom Tvheadend stream profile');
+    setText('value-auth', values.authMode);
+    setText('auth-note', AUTH_NOTES[values.authMode] || '');
     highlightSettingsFocus();
   }
 
@@ -405,7 +480,8 @@
       server: state.settings.server,
       username: state.settings.username,
       password: state.settings.password,
-      profile: state.settings.profile
+      profile: state.settings.profile,
+      authMode: state.settings.authMode
     };
     state.settingsFocus = 0;
     hideSettingsError();
@@ -447,14 +523,14 @@
     element.classList.add('hidden');
   }
 
-  function cycleProfile(delta) {
-    var profiles = window.TvhSettings.PROFILES;
-    var index = profiles.indexOf(state.values.profile);
+  function cycleList(listName, valuesKey, delta) {
+    var list = listName === 'profiles' ? window.TvhSettings.PROFILES : window.TvhSettings.AUTH_MODES;
+    var index = list.indexOf(state.values[valuesKey]);
     if (index === -1) {
       index = delta > 0 ? -1 : 0;
     }
-    index = (index + delta + profiles.length) % profiles.length;
-    state.values.profile = profiles[index];
+    index = (index + delta + list.length) % list.length;
+    state.values[valuesKey] = list[index];
     hideSettingsError();
     renderSettings();
   }
@@ -468,6 +544,8 @@
       renderSettings();
     } else if (action === 'profile') {
       openKeyboardFor('profile', element.getAttribute('data-label'));
+    } else if (action === 'auth') {
+      cycleList('auths', 'authMode', 1);
     } else if (action === 'save') {
       saveSettings();
     } else if (action === 'cancel') {
@@ -494,6 +572,7 @@
   function handleSettingsKey(event) {
     var code = event.keyCode;
     var element = settingsFocusables[state.settingsFocus];
+    var action = element ? element.getAttribute('data-action') : '';
 
     switch (code) {
       case KEYS.UP:
@@ -507,14 +586,20 @@
         consume(event);
         break;
       case KEYS.LEFT:
-        if (element && element.getAttribute('data-action') === 'profile') {
-          cycleProfile(-1);
+        if (action === 'profile') {
+          cycleList('profiles', 'profile', -1);
+          consume(event);
+        } else if (action === 'auth') {
+          cycleList('auths', 'authMode', -1);
           consume(event);
         }
         break;
       case KEYS.RIGHT:
-        if (element && element.getAttribute('data-action') === 'profile') {
-          cycleProfile(1);
+        if (action === 'profile') {
+          cycleList('profiles', 'profile', 1);
+          consume(event);
+        } else if (action === 'auth') {
+          cycleList('auths', 'authMode', 1);
           consume(event);
         }
         break;
