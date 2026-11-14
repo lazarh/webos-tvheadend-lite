@@ -1,0 +1,10 @@
+{
+  "id": "com.lazarh.tvheadend",
+  "version": "1.0.0",
+  "vendor": "lazarh",
+  "type": "web",
+  "main": "index.html",
+  "title": "Tvheadend TV",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png"
+}

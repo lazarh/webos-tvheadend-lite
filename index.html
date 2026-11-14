@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tvheadend TV</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="stage">
+  <video id="player" preload="auto" playsinline></video>
+
+  <!-- Full screen message (startup / playlist errors) -->
+  <div id="message" class="screen hidden">
+    <div class="message-box">
+      <div id="message-title" class="message-title">Tvheadend TV</div>
+      <div id="message-text" class="message-text"></div>
+      <div id="message-hint" class="message-hint"></div>
+    </div>
+  </div>
+
+  <!-- Channel info overlay -->
+  <div id="osd" class="hidden">
+    <div class="osd-box">
+      <div id="osd-number" class="osd-number">&nbsp;</div>
+      <div class="osd-meta">
+        <div id="osd-name" class="osd-name">&nbsp;</div>
+        <div id="osd-status" class="osd-status">&nbsp;</div>
+      </div>
+    </div>
+    <div class="osd-hint">ENTER: channels &nbsp;&middot;&nbsp; UP/DOWN: zap &nbsp;&middot;&nbsp; RED: settings</div>
+  </div>
+
+  <!-- Channel list -->
+  <div id="channel-list" class="overlay hidden">
+    <div class="list-panel">
+      <div class="panel-header">
+        <span>Channels</span>
+        <span id="list-count" class="count"></span>
+      </div>
+      <div class="list-scroll" id="list-scroll">
+        <ul id="list-items" class="list-items"></ul>
+      </div>
+      <div class="panel-footer">UP/DOWN browse &nbsp;&middot;&nbsp; ENTER watch &nbsp;&middot;&nbsp; BACK close</div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="settings" class="overlay hidden">
+    <div class="settings-panel">
+      <div class="panel-header"><span>Settings</span></div>
+      <div class="form-body">
+        <div class="field focusable" data-action="edit" data-key="server" data-label="Server URL">
+          <div class="field-label">Server URL</div>
+          <div class="field-value" id="value-server">&nbsp;</div>
+        </div>
+        <div class="preset-row">
+          <div class="preset focusable" data-action="preset" data-server="http://tvheadend.local:9981">Use LAN server</div>
+          <div class="preset focusable" data-action="preset" data-server="https://tvheadend.example">Use internet (proxy)</div>
+        </div>
+        <div class="field focusable" data-action="edit" data-key="username" data-label="Username">
+          <div class="field-label">Username</div>
+          <div class="field-value" id="value-username">&nbsp;</div>
+        </div>
+        <div class="field focusable" data-action="edit" data-key="password" data-label="Password">
+          <div class="field-label">Password</div>
+          <div class="field-value" id="value-password">&nbsp;</div>
+        </div>
+        <div class="field focusable" data-action="cycle" data-key="profile" data-label="Stream profile">
+          <div class="field-label">Stream profile</div>
+          <div class="field-value" id="value-profile">&nbsp;</div>
+          <div class="field-note" id="profile-note">&nbsp;</div>
+        </div>
+        <div id="settings-error" class="form-error hidden"></div>
+      </div>
+      <div class="form-actions">
+        <div class="btn primary focusable" data-action="save">Save &amp; reload</div>
+        <div class="btn focusable" data-action="cancel">Cancel</div>
+      </div>
+      <div class="panel-footer">UP/DOWN move &nbsp;&middot;&nbsp; ENTER select &nbsp;&middot;&nbsp; LEFT/RIGHT change profile &nbsp;&middot;&nbsp; BACK cancel</div>
+    </div>
+  </div>
+
+  <!-- On-screen keyboard (D-pad friendly) -->
+  <div id="keyboard" class="overlay hidden">
+    <div class="kb-panel">
+      <div class="kb-header">
+        <div class="kb-label" id="kb-label">Value</div>
+        <div class="kb-value" id="kb-value">(empty)</div>
+      </div>
+      <div class="kb-grid" id="kb-grid"></div>
+      <div class="panel-footer">ARROWS move &nbsp;&middot;&nbsp; ENTER type &nbsp;&middot;&nbsp; BACK cancel</div>
+    </div>
+  </div>
+</div>
+
+<script src="js/settings.js"></script>
+<script src="js/playlist.js"></script>
+<script src="js/player.js"></script>
+<script src="js/keyboard.js"></script>
+<script src="js/osd.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

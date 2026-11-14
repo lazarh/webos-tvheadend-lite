@@ -1,0 +1,443 @@
+/* Tvheadend TV - webOS 3.x TV UI */
+
+html {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #eaf2ff;
+  font-family: "Helvetica Neue", "LG Smart UI", Arial, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+#stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------- video */
+
+#player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: contain;
+}
+
+/* --------------------------------------------------- message screen */
+
+#message.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(2, 6, 14, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.message-box {
+  max-width: 1100px;
+  padding: 60px 80px;
+  text-align: center;
+}
+
+.message-title {
+  font-size: 52px;
+  font-weight: 600;
+  color: #7cc4ff;
+  margin-bottom: 26px;
+}
+
+.message-text {
+  font-size: 32px;
+  line-height: 1.45;
+  color: #dbe8f6;
+}
+
+.message-hint {
+  margin-top: 40px;
+  font-size: 24px;
+  color: #8ba3bd;
+  letter-spacing: 0.5px;
+}
+
+/* ---------------------------------------------------------- OSD */
+
+#osd {
+  position: absolute;
+  top: 60px;
+  left: 70px;
+  z-index: 10;
+  max-width: 1400px;
+}
+
+.osd-box {
+  display: flex;
+  align-items: center;
+  padding: 24px 36px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(12, 30, 55, 0.92), rgba(4, 10, 20, 0.92));
+  border: 1px solid rgba(90, 150, 220, 0.35);
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55);
+}
+
+.osd-number {
+  font-size: 64px;
+  font-weight: 700;
+  color: #7cc4ff;
+  min-width: 110px;
+  text-align: center;
+  margin-right: 28px;
+  line-height: 1;
+}
+
+.osd-meta {
+  min-width: 260px;
+  max-width: 1080px;
+}
+
+.osd-name {
+  font-size: 38px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.osd-status {
+  margin-top: 8px;
+  font-size: 24px;
+  color: #9fb4cc;
+}
+
+.osd-status.error {
+  color: #ff8080;
+}
+
+.osd-hint {
+  margin-top: 16px;
+  font-size: 20px;
+  color: #7f93ab;
+  letter-spacing: 0.5px;
+}
+
+/* ------------------------------------------------------ overlays */
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 30;
+  display: flex;
+}
+
+#settings.overlay,
+#keyboard.overlay {
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.68);
+  z-index: 40;
+}
+
+#keyboard.overlay {
+  z-index: 50;
+}
+
+.panel-header {
+  padding: 22px 30px;
+  font-size: 30px;
+  font-weight: 600;
+  color: #eaf2ff;
+  border-bottom: 1px solid rgba(80, 140, 220, 0.25);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.count {
+  font-size: 20px;
+  font-weight: 400;
+  color: #8ba3bd;
+}
+
+.panel-footer {
+  padding: 16px 30px;
+  font-size: 19px;
+  color: #7f93ab;
+  border-top: 1px solid rgba(80, 140, 220, 0.2);
+}
+
+/* ---------------------------------------------------- channel list */
+
+.list-panel {
+  width: 600px;
+  height: calc(100% - 120px);
+  margin: 60px 0 60px 60px;
+  background: rgba(9, 19, 33, 0.97);
+  border: 1px solid rgba(80, 140, 220, 0.35);
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.list-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.list-items {
+  list-style: none;
+  margin: 0;
+  padding: 10px 0;
+}
+
+.ch-item {
+  display: flex;
+  align-items: center;
+  padding: 13px 30px;
+  font-size: 26px;
+  color: #cfe0f2;
+  border-left: 6px solid transparent;
+}
+
+.ch-item .ch-num {
+  width: 110px;
+  flex: none;
+  color: #7cc4ff;
+  font-weight: 600;
+}
+
+.ch-item .ch-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ch-item.current .ch-name {
+  color: #a9ffc4;
+}
+
+.ch-item.active {
+  background: rgba(74, 163, 255, 0.18);
+  border-left-color: #4aa3ff;
+}
+
+.ch-item.active .ch-name {
+  color: #ffffff;
+}
+
+/* ------------------------------------------------------- settings */
+
+.settings-panel {
+  width: 940px;
+  max-height: 92%;
+  background: rgba(9, 19, 33, 0.98);
+  border: 1px solid rgba(80, 140, 220, 0.4);
+  border-radius: 18px;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.form-body {
+  padding: 24px 30px 10px;
+  overflow-y: auto;
+}
+
+.field {
+  margin-bottom: 16px;
+  padding: 15px 22px;
+  border: 2px solid rgba(80, 140, 220, 0.3);
+  border-radius: 12px;
+  background: rgba(8, 16, 28, 0.85);
+}
+
+.field.focused,
+.preset.focused,
+.btn.focused {
+  border-color: #4aa3ff;
+  background: rgba(24, 48, 82, 0.95);
+  box-shadow: 0 0 0 3px rgba(74, 163, 255, 0.25);
+}
+
+.field-label {
+  font-size: 19px;
+  color: #8ba3bd;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.field-value {
+  margin-top: 6px;
+  font-size: 28px;
+  color: #eaf2ff;
+  word-break: break-all;
+}
+
+.field-note {
+  margin-top: 6px;
+  font-size: 19px;
+  color: #7f93ab;
+}
+
+.preset-row {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.preset {
+  flex: 1;
+  margin-right: 14px;
+  padding: 14px 20px;
+  font-size: 22px;
+  color: #cfe0f2;
+  text-align: center;
+  border: 2px solid rgba(80, 140, 220, 0.35);
+  border-radius: 12px;
+  background: rgba(14, 28, 48, 0.9);
+}
+
+.preset:last-child {
+  margin-right: 0;
+}
+
+.form-error {
+  margin: 6px 0 10px;
+  font-size: 22px;
+  color: #ff8080;
+}
+
+.form-actions {
+  display: flex;
+  padding: 18px 30px;
+  border-top: 1px solid rgba(80, 140, 220, 0.2);
+}
+
+.btn {
+  padding: 15px 32px;
+  margin-right: 16px;
+  font-size: 24px;
+  color: #eaf2ff;
+  text-align: center;
+  border: 2px solid rgba(80, 140, 220, 0.4);
+  border-radius: 12px;
+  background: rgba(14, 28, 48, 0.9);
+}
+
+.btn.primary {
+  background: #1d5fa8;
+  border-color: #4aa3ff;
+  color: #ffffff;
+}
+
+/* ------------------------------------------------------- keyboard */
+
+.kb-panel {
+  width: 1260px;
+  background: rgba(9, 19, 33, 0.98);
+  border: 1px solid rgba(80, 140, 220, 0.4);
+  border-radius: 18px;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.kb-header {
+  padding: 18px 30px;
+  border-bottom: 1px solid rgba(80, 140, 220, 0.25);
+}
+
+.kb-label {
+  font-size: 19px;
+  color: #8ba3bd;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.kb-value {
+  margin-top: 6px;
+  font-size: 28px;
+  color: #ffffff;
+  min-height: 34px;
+  word-break: break-all;
+}
+
+.kb-grid {
+  padding: 18px 20px 10px;
+}
+
+.kb-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.kb-key {
+  margin: 0 4px;
+  min-width: 66px;
+  height: 62px;
+  padding: 0 8px;
+  font-size: 26px;
+  color: #eaf2ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(80, 140, 220, 0.25);
+  border-radius: 10px;
+  background: rgba(18, 34, 56, 0.95);
+}
+
+.kb-key.wide {
+  min-width: 108px;
+  font-size: 20px;
+}
+
+.kb-key.focused {
+  background: #1d5fa8;
+  border-color: #7cc4ff;
+  box-shadow: 0 0 0 3px rgba(74, 163, 255, 0.3);
+}
+
+/* Scrollbars: keep them subtle on webOS */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(124, 196, 255, 0.35);
+  border-radius: 5px;
+}

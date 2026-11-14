@@ -1,0 +1,8 @@
+# build output
+build/
+dist/
+*.ipk
+
+# OS noise
+.DS_Store
+Thumbs.db
