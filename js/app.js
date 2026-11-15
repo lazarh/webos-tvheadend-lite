@@ -755,9 +755,6 @@
     var action = element.getAttribute('data-action');
     if (action === 'edit') {
       openKeyboardFor(element.getAttribute('data-key'), element.getAttribute('data-label'));
-    } else if (action === 'preset') {
-      state.values.server = element.getAttribute('data-server');
-      renderSettings();
     } else if (action === 'profile') {
       openKeyboardFor('profile', element.getAttribute('data-label'));
     } else if (action === 'fallback') {

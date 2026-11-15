@@ -536,7 +536,6 @@ body {
 }
 
 .field.focused,
-.preset.focused,
 .btn.focused {
   border-color: #4aa3ff;
   background: rgba(24, 48, 82, 0.95);
@@ -561,27 +560,6 @@ body {
   margin-top: 6px;
   font-size: 19px;
   color: #7f93ab;
-}
-
-.preset-row {
-  display: flex;
-  margin-bottom: 16px;
-}
-
-.preset {
-  flex: 1;
-  margin-right: 14px;
-  padding: 14px 20px;
-  font-size: 22px;
-  color: #cfe0f2;
-  text-align: center;
-  border: 2px solid rgba(80, 140, 220, 0.35);
-  border-radius: 12px;
-  background: rgba(14, 28, 48, 0.9);
-}
-
-.preset:last-child {
-  margin-right: 0;
 }
 
 .form-error {

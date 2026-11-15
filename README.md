@@ -59,16 +59,15 @@ The Settings panel (Red button) stores:
 
 | Setting | Default |
 | --- | --- |
-| Server URL | `http://tvheadend.local:9981` |
+| Server URL | *(empty)* |
 | Username | *(empty)* |
 | Password | *(empty)* |
 | Stream profile | `pass` |
 | Fallback profile | `webtv-h264-aac-mpegts` |
 | Stream auth | `persistent token` |
 
-Two quick presets are available in the panel: the LAN server
-(`http://tvheadend.local:9981`) and the internet/nginx proxy
-(`https://tvheadend.example`).
+Enter the URL of your Tvheadend server, for example
+`http://tvheadend.local:9981` (or your internet/nginx proxy URL).
 
 The **Stream profile** field cycles through the built-in profile names with
 Left/Right; press **ENTER** to type any custom Tvheadend profile name.
@@ -145,21 +144,31 @@ structure afterwards. Icons are regenerated with ImageMagick if missing
 ### Installer troubleshooting
 
 - **`ares-install` crashes with `isDate is not a function`** on Node 22/24:
-  ares-cli 2.4.0 depends on `ssh2-streams` 0.8, which uses the removed
-  `util.isDate` API. Use Node 20, or patch
-  `…/ares-cli/node_modules/ssh2-streams/lib/sftp.js`:
+  this affects the deprecated `@webosose/ares-cli` 2.4.0, which depends on
+  `ssh2-streams` 0.8 (removed `util.isDate` API). Install the maintained
+  `@webos-tools/cli` instead - it supports current Node versions. If you must
+  stay on the old package, use Node 20 or patch
+  `…/ssh2-streams/lib/sftp.js`:
   `var isDate = util.isDate || function(v) { return v instanceof Date; };`
 - **`rm: can't remove '/media/developer/temp': Permission denied`**: some TVs
   mount `/media/developer` `root:root 775`, so the `prisoner` user cannot
-  recreate the temp folder. Point ares at a writable staging path in
-  `…/ares-cli/files/conf/config.json`:
+  recreate the temp folder. Point the CLI at a writable staging path in its
+  `files/conf/config.json`:
   `"tempDirForIpk": "/tmp/developer/temp"`.
 
 ## Install on the TV
 
 1. Enable **Developer Mode** on the TV (Developer Mode app) and install the
-   webOS CLI (`ares-cli`) on your computer, or use the
-   [webOS Dev Mode](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app).
+   webOS CLI on your computer:
+
+   ```sh
+   npm install -g @webos-tools/cli
+   ```
+
+   See the [webOS CLI installation guide](https://webostv.developer.lge.com/develop/tools/cli-installation)
+   and the [webOS Dev Mode](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app)
+   guide. `@webos-tools/cli` is the maintained CLI; it replaced
+   `@webosose/ares-cli` in 2024.
 2. Connect and install:
 
    ```sh

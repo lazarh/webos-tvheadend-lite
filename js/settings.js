@@ -8,7 +8,7 @@
   var STORAGE_KEY = 'tvh.lite.settings.v1';
 
   var DEFAULTS = {
-    server: 'http://tvheadend.local:9981',
+    server: '',
     username: '',
     password: '',
     profile: 'pass',
