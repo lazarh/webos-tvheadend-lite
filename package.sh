@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Builds a valid webOS .ipk using only standard Linux tools (ar + tar).
-# No LG webOS SDK / ares-cli needed.
+# No LG webOS SDK / webOS CLI needed.
 #
 # Output: dist/com.lazarh.tvheadend_1.0.0_all.ipk
 #
