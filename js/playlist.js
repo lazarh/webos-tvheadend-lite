@@ -1,6 +1,6 @@
 /*
  * Tvheadend TV - M3U playlist fetching and parsing.
- * Uses XMLHttpRequest (not fetch) for maximum Chromium 53 compatibility.
+ * Uses XMLHttpRequest (not fetch) for maximum Chromium 38 compatibility.
  */
 (function (window, undefined) {
   'use strict';

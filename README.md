@@ -7,7 +7,8 @@ A lightweight, native LG webOS TV app for watching live TV channels from a
 native, hardware-accelerated HTML5 `<video>` element - no transcoding server,
 no web wrapper, no Electron.
 
-Built for **webOS 3.x (Chromium 53)** and tested against webOS 3.9.3.
+Built for **webOS TV 3.x (Chromium 38)** - the engine used by webOS TV Lite -
+and verified on an LG **UJ635V** running **webOS TV Lite 3.9.3** (Chromium 38).
 
 ## Features
 
@@ -253,12 +254,14 @@ git tag v1.0.0 && git push origin v1.0.0
 ```
 appinfo.json              webOS app manifest
 index.html                video element + all overlays
-css/app.css               TV UI (flexbox only, Chromium 53 safe)
+css/app.css               TV UI (flexbox only, Chromium 38 safe)
 js/settings.js            localStorage settings + URL helpers
+js/config.js              build-time defaults (optional)
 js/playlist.js            XHR + #EXTM3U parser
 js/player.js              <video> wrapper (native pipeline, status/errors)
-js/keyboard.js            D-pad on-screen keyboard
 js/osd.js                 channel OSD, channel list, message screen
+js/epg.js                 EPG data (now/next, grid, per-channel events)
+js/guide.js               TV guide overlay
 js/app.js                 bootstrap, key routing, tuning state machine
 package.sh                ar + tar IPK builder
 tools/make_icons.sh       placeholder icon generator (ImageMagick)
@@ -268,9 +271,10 @@ tools/make_icons.sh       placeholder icon generator (ImageMagick)
 
 The JavaScript intentionally avoids optional chaining, nullish coalescing,
 `async`/`await`, `fetch`, ES modules and CSS grid so the app runs on
-Chromium 38/53 (webOS TV 3.x / 4.x).
+**Chromium 38** (webOS TV 3.x and webOS TV Lite) as well as Chromium 53
+(webOS TV 4.x).
 
-Notes verified on an LG **webOS TV Lite 3.9.3** (Chromium 38) TV:
+Notes verified on an LG **UJ635V / webOS TV Lite 3.9.3** (Chromium 38) TV:
 
 - The media element does not send Basic auth from URL userinfo - always use
   the token modes (persistent token or tickets) on this platform.

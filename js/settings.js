@@ -1,6 +1,6 @@
 /*
  * Tvheadend TV - settings storage and URL helpers.
- * Plain ES5 so it runs on webOS 3.x (Chromium 38/53).
+ * Plain ES5 so it runs on webOS TV 3.x (Chromium 38) and later.
  */
 (function (window, undefined) {
   'use strict';
