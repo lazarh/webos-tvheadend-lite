@@ -60,7 +60,7 @@ The Settings panel (Red button) stores:
 
 | Setting | Default |
 | --- | --- |
-| Server URL | *(empty)* |
+| Server URL | `http://192.168.0.100:9981` |
 | Username | *(empty)* |
 | Password | *(empty)* |
 | Stream profile | `pass` |
@@ -185,7 +185,7 @@ Bake the server settings into the package so nothing has to be typed on the
 TV (the **password is never baked in**):
 
 ```sh
-TVH_SERVER=http://192.168.88.220:9981 \
+TVH_SERVER=http://192.168.0.100:9981 \
 TVH_USERNAME=user \
 TVH_PROFILE=pass \
 TVH_AUTH_MODE=auth \

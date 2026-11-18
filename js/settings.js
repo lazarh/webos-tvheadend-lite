@@ -8,7 +8,7 @@
   var STORAGE_KEY = 'tvh.lite.settings.v1';
 
   var DEFAULTS = {
-    server: '',
+    server: 'http://192.168.0.100:9981',
     username: '',
     password: '',
     profile: 'pass',

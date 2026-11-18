@@ -46,7 +46,7 @@ done
 # ------------------------------------------------ install-time defaults
 # Optional: bake server settings into the package so no typing is needed on
 # the TV. The password is intentionally never baked in.
-#   TVH_SERVER=http://192.168.88.220:9981 TVH_USERNAME=user \
+#   TVH_SERVER=http://192.168.0.100:9981 TVH_USERNAME=user \
 #   TVH_PROFILE=pass TVH_AUTH_MODE=auth ./package.sh
 if [[ -n "${TVH_SERVER:-}" || -n "${TVH_USERNAME:-}" || -n "${TVH_PROFILE:-}" || -n "${TVH_AUTH_MODE:-}" || -n "${TVH_FALLBACK_PROFILE:-}" ]]; then
   echo ">> Baking install-time config into js/config.js"
