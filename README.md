@@ -164,7 +164,7 @@ No LG SDK is required. The package is assembled with standard `ar` + `tar`:
 
 ```sh
 ./package.sh
-# -> dist/com.lazarh.tvheadend_1.0.0_all.ipk
+# -> dist/com.lazarh.tvheadend_1.1.0_all.ipk
 ```
 
 The script produces a Debian-style IPK (`debian-binary`, `control.tar.gz`,
@@ -230,7 +230,7 @@ entered once on the TV.
 
    ```sh
    ares-setup-device          # add the TV (IP + passphrase)
-   ares-install dist/com.lazarh.tvheadend_1.0.0_all.ipk
+   ares-install dist/com.lazarh.tvheadend_1.1.0_all.ipk
    ```
 
 3. Launch **Tvheadend TV** from the TV launcher and configure the server.

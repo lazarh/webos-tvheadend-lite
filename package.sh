@@ -9,7 +9,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ID="com.lazarh.tvheadend"
-VERSION="1.0.0"
+VERSION="1.1.0"
 ARCH="all"
 PKG_NAME="${APP_ID}_${VERSION}_${ARCH}.ipk"
 
