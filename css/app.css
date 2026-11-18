@@ -556,6 +556,23 @@ body {
   word-break: break-all;
 }
 
+.field-input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 4px 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #eaf2ff;
+  font-family: inherit;
+  font-size: 28px;
+}
+
+.field-input::placeholder {
+  color: #55677d;
+}
+
 .field-note {
   margin-top: 6px;
   font-size: 19px;

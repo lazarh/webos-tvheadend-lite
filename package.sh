@@ -43,6 +43,31 @@ for entry in "${APP_FILES[@]}"; do
   cp -r "$ROOT/$entry" "$APP_DIR/"
 done
 
+# ------------------------------------------------ install-time defaults
+# Optional: bake server settings into the package so no typing is needed on
+# the TV. The password is intentionally never baked in.
+#   TVH_SERVER=http://192.168.88.220:9981 TVH_USERNAME=user \
+#   TVH_PROFILE=pass TVH_AUTH_MODE=auth ./package.sh
+if [[ -n "${TVH_SERVER:-}" || -n "${TVH_USERNAME:-}" || -n "${TVH_PROFILE:-}" || -n "${TVH_AUTH_MODE:-}" || -n "${TVH_FALLBACK_PROFILE:-}" ]]; then
+  echo ">> Baking install-time config into js/config.js"
+  python3 - "$APP_DIR/js/config.js" <<'PY'
+import json, os, sys
+cfg = {}
+for env, key in [
+    ('TVH_SERVER', 'server'),
+    ('TVH_USERNAME', 'username'),
+    ('TVH_PROFILE', 'profile'),
+    ('TVH_AUTH_MODE', 'authMode'),
+    ('TVH_FALLBACK_PROFILE', 'fallbackProfile'),
+]:
+    value = os.environ.get(env, '').strip()
+    if value:
+        cfg[key] = value
+with open(sys.argv[1], 'w') as handle:
+    handle.write('window.TVH_CONFIG = ' + json.dumps(cfg) + ';\n')
+PY
+fi
+
 # ------------------------------------------------------- control file
 cat > "$CTRL_DIR/control" <<EOF
 Package: $APP_ID

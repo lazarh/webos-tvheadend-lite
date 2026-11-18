@@ -79,26 +79,30 @@
     <div class="settings-panel">
       <div class="panel-header"><span>Settings</span></div>
       <div class="form-body" id="form-body">
-        <div class="field focusable" data-action="edit" data-key="server" data-label="Server URL">
+        <div class="field focusable" data-action="edit" data-key="server">
           <div class="field-label">Server URL</div>
-          <div class="field-value" id="value-server">&nbsp;</div>
+          <input id="input-server" data-key="server" class="field-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="http://192.168.88.220:9981">
         </div>
-        <div class="field focusable" data-action="edit" data-key="username" data-label="Username">
+        <div class="preset-row">
+          <div class="preset focusable" data-action="preset" data-server="http://192.168.88.220:9981">Use LAN server</div>
+          <div class="preset focusable" data-action="preset" data-server="https://tv.lazarh.work">Use internet (proxy)</div>
+        </div>
+        <div class="field focusable" data-action="edit" data-key="username">
           <div class="field-label">Username</div>
-          <div class="field-value" id="value-username">&nbsp;</div>
+          <input id="input-username" data-key="username" class="field-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">
         </div>
-        <div class="field focusable" data-action="edit" data-key="password" data-label="Password">
+        <div class="field focusable" data-action="edit" data-key="password">
           <div class="field-label">Password</div>
-          <div class="field-value" id="value-password">&nbsp;</div>
+          <input id="input-password" data-key="password" class="field-input" type="password" autocomplete="new-password">
         </div>
-        <div class="field focusable" data-action="profile" data-key="profile" data-label="Stream profile">
+        <div class="field focusable" data-action="edit" data-key="profile">
           <div class="field-label">Stream profile</div>
-          <div class="field-value" id="value-profile">&nbsp;</div>
+          <input id="input-profile" data-key="profile" class="field-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">
           <div class="field-note" id="profile-note">&nbsp;</div>
         </div>
-        <div class="field focusable" data-action="fallback" data-key="fallbackProfile" data-label="Fallback profile">
+        <div class="field focusable" data-action="edit" data-key="fallbackProfile">
           <div class="field-label">Fallback profile</div>
-          <div class="field-value" id="value-fallback">&nbsp;</div>
+          <input id="input-fallback" data-key="fallbackProfile" class="field-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" placeholder="(off)">
           <div class="field-note" id="fallback-note">&nbsp;</div>
         </div>
         <div class="field focusable" data-action="auth" data-key="authMode" data-label="Stream auth">
@@ -112,27 +116,17 @@
         <div class="btn primary focusable" data-action="save">Save &amp; reload</div>
         <div class="btn focusable" data-action="cancel">Cancel</div>
       </div>
-      <div class="panel-footer">UP/DOWN move &nbsp;&middot;&nbsp; ENTER select or type &nbsp;&middot;&nbsp; LEFT/RIGHT change values &nbsp;&middot;&nbsp; BLUE cancel</div>
+      <div class="panel-footer">UP/DOWN move &nbsp;&middot;&nbsp; OK edit &nbsp;&middot;&nbsp; LEFT/RIGHT change values &nbsp;&middot;&nbsp; BLUE cancel</div>
     </div>
   </div>
 
-  <!-- On-screen keyboard (D-pad friendly) -->
-  <div id="keyboard" class="overlay hidden">
-    <div class="kb-panel">
-      <div class="kb-header">
-        <div class="kb-label" id="kb-label">Value</div>
-        <div class="kb-value" id="kb-value">(empty)</div>
-      </div>
-      <div class="kb-grid" id="kb-grid"></div>
-      <div class="panel-footer">ARROWS move &nbsp;&middot;&nbsp; ENTER type &nbsp;&middot;&nbsp; BLUE cancel</div>
-    </div>
-  </div>
+  <!-- On-screen keyboard is provided by the webOS TV system (native inputs) -->
 </div>
 
+<script src="js/config.js"></script>
 <script src="js/settings.js"></script>
 <script src="js/playlist.js"></script>
 <script src="js/player.js"></script>
-<script src="js/keyboard.js"></script>
 <script src="js/osd.js"></script>
 <script src="js/epg.js"></script>
 <script src="js/guide.js"></script>

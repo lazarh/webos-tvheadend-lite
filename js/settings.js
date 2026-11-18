@@ -78,6 +78,24 @@
   function load() {
     var stored = null;
     var settings = clone(DEFAULTS);
+    var config = window.TVH_CONFIG;
+    if (config && typeof config === 'object') {
+      if (typeof config.server === 'string') {
+        settings.server = config.server;
+      }
+      if (typeof config.username === 'string') {
+        settings.username = config.username;
+      }
+      if (typeof config.profile === 'string' && trim(config.profile)) {
+        settings.profile = trim(config.profile);
+      }
+      if (typeof config.fallbackProfile === 'string') {
+        settings.fallbackProfile = trim(config.fallbackProfile);
+      }
+      if (AUTH_MODES.indexOf(config.authMode) !== -1) {
+        settings.authMode = config.authMode;
+      }
+    }
     try {
       stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || 'null');
     } catch (error) {

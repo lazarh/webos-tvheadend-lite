@@ -50,8 +50,9 @@ Inside the channel list: `Up`/`Down` browse, `OK`/`Right` watches,
 Inside the guide: `Up`/`Down` change channel (or program when the schedule
 pane is active), `Left`/`Right` switch between the channel list and the day
 schedule pane, `OK` watches, `Blue` closes.
-Settings and the on-screen keyboard are fully D-pad operable
-(`Blue` cancels).
+Settings fields use the TV's **system virtual keyboard** (webOS TV): press
+**OK** on a field to start typing. Left/Right cycles the profile/auth values;
+**Blue** cancels.
 
 ## Configuration
 
@@ -92,6 +93,43 @@ authenticates stream requests:
 - **Basic in URL** - embeds `user:pass` in the stream URL. Fine on standard
   webOS, but **webOS TV Lite strips credentials from media URLs**, so use one
   of the token modes there.
+
+### Recommended Tvheadend setup
+
+These are the settings verified on a webOS TV Lite 3.9.3 (Chromium 38) with a
+2-vCPU LXC: DVB channels need no transcoding, and the transcode profile stays
+under ~10% CPU.
+
+Set **View level → Expert** (top-right of the Tvheadend web UI) first, or the
+fields below stay hidden.
+
+**Configuration → Stream → Codec Profiles → `webtv-h264` (used by the
+transcode stream profile):**
+
+| Field | Value |
+| --- | --- |
+| Height | `720` |
+| Bitrate | `2000` kb/s |
+| Preset | `ultrafast` |
+| Deinterlace | `No` |
+| Hardware acceleration | `No` (enable only with `/dev/dri` passthrough) |
+
+**Configuration → Stream → Stream Profiles → `webtv-h264-aac-mpegts`:**
+
+| Field | Value |
+| --- | --- |
+| Video codec profile | `webtv-h264` |
+| Audio codec | `Copy` (use `aac` @ 128 only if audio misbehaves) |
+| Container | `mpegts` |
+
+Notes:
+
+- The IPTV source's own timestamps can cause periodic 2–7 s re-buffers with
+  `pass`; the transcode profile re-times the stream and is smoother.
+- If the server is CPU-starved, give the LXC 3–4 vCPUs — x264 uses x264
+  threads, and `ultrafast` + 720p is roughly 3–4× cheaper than the defaults.
+- The built-in AAC encoder in some builds produces noise during silence; in
+  that case prefer `Copy` for audio (MP2/AAC sources play natively).
 
 ### Stream profiles
 
@@ -140,6 +178,25 @@ structure afterwards. Icons are regenerated with ImageMagick if missing
 > (mode `100644`, space-padded names, no trailing `/`) and rejects archives
 > built by GNU `ar` with "Failed to extract package". Only `tar`, `gzip` and
 > coreutils are required.
+
+### Pre-configure the server at build time
+
+Bake the server settings into the package so nothing has to be typed on the
+TV (the **password is never baked in**):
+
+```sh
+TVH_SERVER=http://192.168.88.220:9981 \
+TVH_USERNAME=user \
+TVH_PROFILE=pass \
+TVH_AUTH_MODE=auth \
+TVH_FALLBACK_PROFILE=webtv-h264-aac-mpegts \
+./package.sh
+```
+
+The values are written to `js/config.js` inside the packaged app and used as
+first-run defaults; they remain editable in the TV's Settings panel. On the
+first start the app reports an authentication error until the password is
+entered once on the TV.
 
 ### Installer troubleshooting
 

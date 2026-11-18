@@ -64,7 +64,6 @@
   var channelList = null;
   var guide = null;
   var message = null;
-  var keyboard = null;
 
   var settingsRoot = null;
   var settingsFocusables = [];
@@ -90,7 +89,6 @@
     channelList = new window.TvhUi.ChannelList();
     guide = new window.TvhGuide();
     message = new window.TvhUi.MessageScreen();
-    keyboard = new window.TvhKeyboard();
 
     guide.setEventsProvider(function (channel, callback) {
       if (!channel || !channel.id) {
@@ -114,7 +112,8 @@
     };
 
     state.settings = window.TvhSettings.load();
-    state.configured = window.TvhSettings.hasSettings();
+    state.configured = window.TvhSettings.hasSettings() ||
+      !!(window.TVH_CONFIG && window.TVH_CONFIG.server);
 
     collectSettingsFocusables();
     document.addEventListener('keydown', onKeyDown, false);
@@ -130,10 +129,6 @@
   /* --------------------------------------------------------- key router */
 
   function onKeyDown(event) {
-    if (keyboard.isOpen()) {
-      keyboard.handleKey(event);
-      return;
-    }
     if (state.settingsOpen) {
       handleSettingsKey(event);
       return;
@@ -625,6 +620,69 @@
         }, false);
       })(settingsFocusables[i], i);
     }
+    bindFieldInputs();
+  }
+
+  function bindFieldInputs() {
+    var inputs = settingsRoot.querySelectorAll('.field-input');
+    var i;
+    for (i = 0; i < inputs.length; i++) {
+      (function (input) {
+        var key = input.getAttribute('data-key');
+        input.addEventListener('input', function () {
+          state.values[key] = input.value;
+          hideSettingsError();
+        }, false);
+        input.addEventListener('keydown', function (event) {
+          var code = event.keyCode;
+          /* let the D-pad leave the field; the system keyboard handles keys
+             while it is open (those never reach the page) */
+          if (code === KEYS.UP || code === KEYS.DOWN || code === KEYS.ENTER ||
+              code === KEYS.BACK || code === KEYS.ESC) {
+            input.blur();
+          }
+        }, false);
+      })(inputs[i]);
+    }
+  }
+
+  function focusInput(key) {
+    var ids = {
+      server: 'input-server',
+      username: 'input-username',
+      password: 'input-password',
+      profile: 'input-profile',
+      fallbackProfile: 'input-fallback'
+    };
+    var input = byId(ids[key]);
+    if (input) {
+      input.focus();
+    }
+  }
+
+  function blurSettingsInputs() {
+    var active = document.activeElement;
+    if (active && active.tagName === 'INPUT') {
+      active.blur();
+    }
+  }
+
+  function readSettingsInputs() {
+    var ids = {
+      server: 'input-server',
+      username: 'input-username',
+      password: 'input-password',
+      profile: 'input-profile',
+      fallbackProfile: 'input-fallback'
+    };
+    for (var key in ids) {
+      if (ids.hasOwnProperty(key)) {
+        var input = byId(ids[key]);
+        if (input) {
+          state.values[key] = input.value;
+        }
+      }
+    }
   }
 
   function highlightSettingsFocus() {
@@ -652,19 +710,24 @@
 
   function renderSettings() {
     var values = state.values;
-    var bullets = '';
+    var element;
     var i;
-    setText('value-server', values.server || '(not set)');
-    setText('value-username', values.username || '(none)');
-    if (values.password) {
-      for (i = 0; i < values.password.length; i++) {
-        bullets += '\u2022';
+    var inputs = {
+      server: 'input-server',
+      username: 'input-username',
+      password: 'input-password',
+      profile: 'input-profile',
+      fallbackProfile: 'input-fallback'
+    };
+    for (var key in inputs) {
+      if (inputs.hasOwnProperty(key)) {
+        element = byId(inputs[key]);
+        if (element && document.activeElement !== element) {
+          element.value = values[key] || '';
+        }
       }
     }
-    setText('value-password', values.password ? bullets : '(none)');
-    setText('value-profile', values.profile || window.TvhSettings.DEFAULTS.profile);
     setText('profile-note', PROFILE_NOTES[values.profile] || 'Custom Tvheadend stream profile');
-    setText('value-fallback', values.fallbackProfile || '(off)');
     setText('fallback-note', FALLBACK_NOTES[values.fallbackProfile || ''] || 'Custom fallback profile');
     setText('value-auth', values.authMode);
     setText('auth-note', AUTH_NOTES[values.authMode] || '');
@@ -691,7 +754,6 @@
   }
 
   function closeSettings() {
-    keyboard.close();
     settingsRoot.classList.add('hidden');
     state.settingsOpen = false;
     if (!state.configured) {
@@ -700,6 +762,7 @@
   }
 
   function saveSettings() {
+    readSettingsInputs();
     var error = window.TvhSettings.validate(state.values);
     if (error) {
       showSettingsError(error);
@@ -726,19 +789,13 @@
 
   var CYCLE_LISTS = {
     profile: window.TvhSettings.PROFILES,
-    fallback: window.TvhSettings.FALLBACKS,
-    auth: window.TvhSettings.AUTH_MODES
-  };
-  var CYCLE_KEYS = {
-    profile: 'profile',
-    fallback: 'fallbackProfile',
-    auth: 'authMode'
+    fallbackProfile: window.TvhSettings.FALLBACKS,
+    authMode: window.TvhSettings.AUTH_MODES
   };
 
-  function cycleField(action, delta) {
-    var list = CYCLE_LISTS[action];
-    var key = CYCLE_KEYS[action];
-    if (!list || !key) {
+  function cycleField(key, delta) {
+    var list = CYCLE_LISTS[key];
+    if (!list) {
       return;
     }
     var index = list.indexOf(state.values[key]);
@@ -754,13 +811,12 @@
   function activateSettingsElement(element) {
     var action = element.getAttribute('data-action');
     if (action === 'edit') {
-      openKeyboardFor(element.getAttribute('data-key'), element.getAttribute('data-label'));
-    } else if (action === 'profile') {
-      openKeyboardFor('profile', element.getAttribute('data-label'));
-    } else if (action === 'fallback') {
-      openKeyboardFor('fallbackProfile', element.getAttribute('data-label'));
+      focusInput(element.getAttribute('data-key'));
+    } else if (action === 'preset') {
+      state.values.server = element.getAttribute('data-server');
+      renderSettings();
     } else if (action === 'auth') {
-      cycleField('auth', 1);
+      cycleField('authMode', 1);
     } else if (action === 'save') {
       saveSettings();
     } else if (action === 'cancel') {
@@ -768,59 +824,35 @@
     }
   }
 
-  function openKeyboardFor(key, label) {
-    keyboard.open(label, state.values[key] || '', function (value) {
-      if (key === 'server' || key === 'profile' || key === 'fallbackProfile') {
-        value = value.replace(/^\s+|\s+$/g, '');
-      }
-      if (key === 'profile' && !value) {
-        value = window.TvhSettings.DEFAULTS.profile;
-      }
-      state.values[key] = value;
-      hideSettingsError();
-      renderSettings();
-    }, function () {
-      /* cancelled - value is unchanged */
-    });
-  }
-
   function handleSettingsKey(event) {
     var code = event.keyCode;
     var element = settingsFocusables[state.settingsFocus];
     var action = element ? element.getAttribute('data-action') : '';
+    var key = element ? element.getAttribute('data-key') : '';
+    var editing = document.activeElement && document.activeElement.tagName === 'INPUT';
 
     switch (code) {
       case KEYS.UP:
+        blurSettingsInputs();
         state.settingsFocus = (state.settingsFocus - 1 + settingsFocusables.length) % settingsFocusables.length;
         highlightSettingsFocus();
         consume(event);
         break;
       case KEYS.DOWN:
+        blurSettingsInputs();
         state.settingsFocus = (state.settingsFocus + 1) % settingsFocusables.length;
         highlightSettingsFocus();
         consume(event);
         break;
       case KEYS.LEFT:
-        if (action === 'profile') {
-          cycleField('profile', -1);
-          consume(event);
-        } else if (action === 'fallback') {
-          cycleField('fallback', -1);
-          consume(event);
-        } else if (action === 'auth') {
-          cycleField('auth', -1);
+        if (!editing && (key === 'profile' || key === 'fallbackProfile' || key === 'authMode')) {
+          cycleField(key, -1);
           consume(event);
         }
         break;
       case KEYS.RIGHT:
-        if (action === 'profile') {
-          cycleField('profile', 1);
-          consume(event);
-        } else if (action === 'fallback') {
-          cycleField('fallback', 1);
-          consume(event);
-        } else if (action === 'auth') {
-          cycleField('auth', 1);
+        if (!editing && (key === 'profile' || key === 'fallbackProfile' || key === 'authMode')) {
+          cycleField(key, 1);
           consume(event);
         }
         break;
