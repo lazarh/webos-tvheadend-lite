@@ -4,8 +4,8 @@
 
 A lightweight, native LG webOS TV app for watching live TV channels from a
 [Tvheadend](https://tvheadend.org/) server. Streams are played by the TV's
-native, hardware-accelerated HTML5 `<video>` element - no transcoding server,
-no web wrapper, no Electron.
+native, hardware-accelerated HTML5 `<video>` element - no web wrapper, no
+Electron, no separate streaming proxy.
 
 Built for **webOS TV 3.x (Chromium 38)** - the engine used by webOS TV Lite -
 and verified on an LG **UJ635V** running **webOS TV Lite 3.9.3** (Chromium 38).
@@ -14,12 +14,14 @@ and verified on an LG **UJ635V** running **webOS TV Lite 3.9.3** (Chromium 38).
 
 - Loads the channel list from Tvheadend's M3U playlist endpoint
   `<server>/playlist/channels.m3u?profile=<profile>`.
-- HTTP Basic Auth support (username/password are stored on the TV only).
+- Token-based stream auth (persistent or 5-minute tickets), with Basic auth for
+  the playlist fetch. Credentials are stored on the TV only.
 - Selectable stream profiles: `pass`, `webtv-h264-aac-mpegts`, `htsp`, plus an
   automatic **fallback profile** for channels the main profile cannot play.
 - Full EPG: now/next program info on the OSD (title, description, progress
   bar) and a full-screen TV guide with program browsing.
-- Full Magic Remote / D-pad control with an on-screen keyboard for settings.
+- Full Magic Remote / D-pad control, using the TV's system keyboard for text
+  entry.
 - Channel info OSD with a 4 second auto-hide, live status and error reporting.
 - Direct channel entry with the number keys.
 - Server URL, credentials, profile, fallback and auth mode stored in
@@ -39,9 +41,9 @@ and verified on an LG **UJ635V** running **webOS TV Lite 3.9.3** (Chromium 38).
 
 > The **Back** button never reaches the app on webOS TV Lite - the platform
 > intercepts it and shows its own menu. The app therefore uses **Left** (close
-> channel list), **Blue** (close guide/settings/keyboard) and
-> **Left/Right while watching** (reopen channel list) instead. On standard
-> webOS, `Back` (461) also closes overlays.
+> channel list), **Blue** (close guide/settings) and **Left/Right while
+> watching** (reopen channel list) instead. On standard webOS, `Back` (461)
+> also closes overlays.
 >
 > On webOS TV Lite, `CH+`/`CH−` arrive as `PageUp`/`PageDown` (33/34) - both
 > codes are mapped.
@@ -66,40 +68,59 @@ The Settings panel (Red button) stores:
 | Password | *(empty)* |
 | Stream profile | `pass` |
 | Fallback profile | `webtv-h264-aac-mpegts` |
-| Stream auth | `persistent token` |
+| Stream auth | `auth` (persistent token) |
 
 Enter the URL of your Tvheadend server, for example
 `http://tvheadend.local:9981` (or your internet/nginx proxy URL).
 
-The **Stream profile** field cycles through the built-in profile names with
-Left/Right; press **ENTER** to type any custom Tvheadend profile name.
+The **Stream profile** field cycles through the built-in names with Left/Right;
+press **OK** to type any custom Tvheadend profile name.
 
-The **Fallback profile** (Left/Right to change, ENTER to type a custom name) is
-tried automatically when a channel cannot be played with the main profile -
-for example DVB channels play with `pass` (zero server CPU) while IPTV
-channels in MPEG-2/HEVC are automatically retried with the transcoding
-profile. The choice is remembered per channel for the session. Select *(off)*
-to disable the fallback.
+The **Fallback profile** is tried automatically when a channel cannot be played
+with the main profile - DVB channels play with `pass` (zero server CPU) while
+IPTV channels in MPEG-2/HEVC are automatically retried with the transcoding
+profile. The choice is remembered per channel. Set the field to empty to
+disable the fallback.
 
-The **Stream auth** field (Left/Right to change) controls how the TV
-authenticates stream requests:
+### Stream profiles
 
-- **persistent token** (default, recommended) - the channel playlist carries
-  permanent `?auth=` tokens, so the `<video>` element needs no credentials.
-  Enable it in Tvheadend: *Configuration → Users → Passwords → edit the user →
-  tick **Persistent authentication** → Save*.
-- **5-minute tickets** - uses `?ticket=` tokens; works without any server-side
-  change. The app refreshes the playlist automatically every 4 minutes and
-  retries once on a failed tune.
-- **Basic in URL** - embeds `user:pass` in the stream URL. Fine on standard
-  webOS, but **webOS TV Lite strips credentials from media URLs**, so use one
-  of the token modes there.
+- **`pass`** - no transcoding: best quality, zero CPU. DVB channels usually
+  play directly; channels the TV cannot decode are retried with the fallback
+  profile automatically (see *Fallback profile*).
+- **`webtv-h264-aac-mpegts`** - transcodes to H.264 + AAC in MPEG-TS. The
+  reliable format on **webOS TV Lite** (Chromium 38); the default fallback.
+- **`htsp`** - produces `htsp://` URLs, which the HTML5 video element cannot
+  play. The app detects this and shows a clear error instead of a black screen.
+
+### Stream auth (recommended: `auth` / persistent token)
+
+Stream auth is a two-part setup - the server issues a token, then the app uses
+it:
+
+1. **Tvheadend**: *Configuration → Users → Passwords → edit the user → tick
+   **Persistent authentication** → Save.* The user's password entry now has a
+   permanent authcode.
+2. **App**: Settings → **Stream auth** → `auth`.
+
+The playlist is then fetched once with your username/password (Basic auth over
+XHR), and every stream URL carries a permanent `?auth=<token>`. The `<video>`
+element itself never needs credentials - which is essential on webOS TV Lite,
+where the media element strips Basic auth from URLs. The token is bound to that
+Tvheadend user; unticking the option revokes it.
+
+The **Stream auth** field cycles through three values:
+
+| Value | Name | Notes |
+| --- | --- | --- |
+| `auth` | persistent token | **Recommended**; requires step 1 above. No expiry, no refresh. |
+| `ticket` | 5-minute tickets | Works with no server change; the app refreshes the playlist every 4 minutes and retries once on failure. |
+| `url` | Basic in URL | Embeds `user:pass` in stream URLs; fails on webOS TV Lite. |
 
 ### Recommended Tvheadend setup
 
 These are the settings verified on a webOS TV Lite 3.9.3 (Chromium 38) with a
-2-vCPU LXC: DVB channels need no transcoding, and the transcode profile stays
-under ~10% CPU.
+modest 2-vCPU container: DVB channels need no transcoding, and the transcode
+profile stays under ~10% CPU.
 
 Set **View level → Expert** (top-right of the Tvheadend web UI) first, or the
 fields below stay hidden.
@@ -127,34 +148,22 @@ Notes:
 
 - The IPTV source's own timestamps can cause periodic 2–7 s re-buffers with
   `pass`; the transcode profile re-times the stream and is smoother.
-- If the server is CPU-starved, give the LXC 3–4 vCPUs — x264 uses x264
-  threads, and `ultrafast` + 720p is roughly 3–4× cheaper than the defaults.
+- If the server is CPU-starved, give the container 3–4 vCPUs — `ultrafast` +
+  720p is roughly 3–4× cheaper than the default preset and resolution.
 - The built-in AAC encoder in some builds produces noise during silence; in
   that case prefer `Copy` for audio (MP2/AAC sources play natively).
-
-### Stream profiles
-
-- **`pass`** - no transcoding. Best quality and zero CPU load; DVB channels
-  usually play directly while IPTV channels whose codecs the TV cannot decode
-  fall back to the transcode profile automatically.
-- **`webtv-h264-aac-mpegts`** - transcodes to H.264 + AAC in MPEG-TS. The
-  reliable format on **webOS TV Lite** (Chromium 38); used as the fallback
-  profile by default.
-- **`htsp`** - produces `htsp://` URLs, which the HTML5 video element cannot
-  play. The app detects this and shows a clear error instead of a black screen.
 
 ### Notes
 
 - `#EXTM3U` parsing uses the `tvg-chno` attribute for channel numbers and falls
   back to the playlist position.
-- The playlist is fetched over XHR (Basic auth works there); stream URLs carry
-  auth tokens (see *Stream auth* above) because a `<video>` element cannot send
-  an `Authorization` header - and webOS TV Lite strips credentials from media
-  URLs entirely.
+- The playlist is fetched over XHR with Basic auth; stream URLs carry
+  `?auth=`/`?ticket=` tokens instead (see *Stream auth*), because a `<video>`
+  element cannot send an `Authorization` header.
 - If the channel list cannot be fetched, the app reports whether it was an
   authentication, network/CORS or HTTP error. When using an nginx reverse proxy,
-  make sure it forwards `/playlist` and `/stream` and does not strip the
-  `Authorization` header. If CORS is enforced in your setup, add
+  forward `/playlist` and `/stream` unchanged and preserve the query string
+  (the tokens live there). If CORS is enforced in your setup, add
   `add_header Access-Control-Allow-Origin *;` to the proxy responses.
 - The app never ships credentials in the repository; they live only in the TV's
   `localStorage`.
@@ -246,7 +255,7 @@ uploads it as an artifact, and attaches it to a GitHub Release when a `v*` tag i
 pushed:
 
 ```sh
-git tag v1.0.0 && git push origin v1.0.0
+git tag v1.2.0 && git push origin v1.2.0
 ```
 
 ## Project layout
@@ -277,7 +286,7 @@ The JavaScript intentionally avoids optional chaining, nullish coalescing,
 Notes verified on an LG **UJ635V / webOS TV Lite 3.9.3** (Chromium 38) TV:
 
 - The media element does not send Basic auth from URL userinfo - always use
-  the token modes (persistent token or tickets) on this platform.
+  `auth` or `ticket` on this platform (see *Stream auth*).
 - The native media pipeline crashes if a new live stream starts immediately
   after another one stopped. The app therefore waits ~3 s between stopping and
   starting a stream (the OSD shows *Switching...* while it waits).
