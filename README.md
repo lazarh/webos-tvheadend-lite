@@ -18,13 +18,13 @@ and verified on an LG **UJ635V** running **webOS TV Lite 3.9.3** (Chromium 38).
   auth. Credentials are stored on the TV only.
 - Selectable stream profiles: `webtv-h264-aac-mpegts` (default), `pass`,
   `htsp`.
-- Full EPG: now/next program info on the OSD (title, description, progress
-  bar) and a full-screen TV guide with program browsing.
+- Full EPG: now/next program info on the OSD (title, progress bar,
+  description) and a full-screen TV guide with program browsing.
 - Full Magic Remote / D-pad control, using the TV's system keyboard for text
   entry.
 - Channel info OSD with a 4 second auto-hide, live status and error reporting.
 - Direct channel entry with the number keys.
-- Server URL, credentials and profile stored in `localStorage`.
+- Server URL, credentials, profile and switch delay stored in `localStorage`.
 
 ## Remote control
 
@@ -47,14 +47,33 @@ and verified on an LG **UJ635V** running **webOS TV Lite 3.9.3** (Chromium 38).
 > On webOS TV Lite, `CH+`/`CH−` arrive as `PageUp`/`PageDown` (33/34) - both
 > codes are mapped.
 
-Inside the channel list: `Up`/`Down` browse, `OK`/`Right` watches,
-`Left` closes, `Info` opens the guide.
-Inside the guide: `Up`/`Down` change channel (or program when the schedule
-pane is active), `Left`/`Right` switch between the channel list and the day
-schedule pane, `OK` watches, `Blue` closes.
-Settings fields use the TV's **system virtual keyboard** (webOS TV): press
-**OK** on a field to start typing. Left/Right cycles the profile/auth values;
-**Blue** cancels.
+Inside the channel list: `Up`/`Down` browse, `OK`/`Right` watches, `Left`
+closes, `Info` opens the guide. Inside the guide: `Up`/`Down` change channel
+(or program when the schedule pane is active), `Left`/`Right` switch panes,
+`OK` watches, `Blue` closes. Settings fields use the TV's system virtual
+keyboard: press **OK** on a field to type.
+
+## Getting started
+
+1. **Tvheadend**: enable the persistent authentication token for the user the
+   TV will use - see [Stream authentication](#stream-authentication-required).
+2. **TV**: enable Developer Mode and install the `.ipk`:
+
+   ```sh
+   npm install -g @webos-tools/cli
+   ares-setup-device          # add the TV (IP + passphrase)
+   ares-install dist/com.lazarh.tvheadend_1.3.0_all.ipk
+   ```
+
+   See the [webOS CLI installation guide](https://webostv.developer.lge.com/develop/tools/cli-installation)
+   and the [webOS Dev Mode](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app)
+   guide. Rooted / homebrew-enabled TVs can also install the `.ipk` with the
+   usual `ipkg install` tooling.
+3. **App**: open Settings (**Red**) and enter the server URL, username and
+   password, then **Save & reload**.
+
+To skip step 3 entirely, bake the server into the package at build time - see
+[Pre-configure the server at build time](#pre-configure-the-server-at-build-time).
 
 ## Configuration
 
@@ -74,23 +93,13 @@ Enter the URL of your Tvheadend server, for example
 The **Stream profile** field cycles through the built-in names with Left/Right;
 press **OK** to type any custom Tvheadend profile name.
 
-### Stream authentication (required)
+The **Switch delay** field (1-5 s, Left/Right to change) is the pause the app
+waits between stopping the old stream and starting the new one. It exists
+because the TV's media pipeline crashes if a new live stream starts
+immediately after another one stopped. Lower it for faster zapping; raise it
+back if you ever see crashes.
 
-The app always uses Tvheadend's **persistent authentication token**:
-
-1. In Tvheadend: *Configuration → Users → Passwords → edit the user → tick
-   **Persistent authentication** → Save.* The user's password entry gets a
-   permanent authcode.
-2. In the app: enter that user's **username and password** (used for the
-   playlist fetch).
-
-The playlist is fetched over XHR with Basic auth, and every stream URL carries
-a permanent `?auth=<token>` - so the `<video>` element itself never needs
-credentials. This is essential on webOS TV Lite, where the media element strips
-Basic auth from media URLs. The token is bound to that Tvheadend user;
-unticking the option revokes it.
-
-### Stream profiles
+## Stream profiles
 
 - **`webtv-h264-aac-mpegts`** (default) - transcodes every channel to H.264 +
   AAC in MPEG-TS. The reliable format on **webOS TV Lite** (Chromium 38); DVB
@@ -101,7 +110,23 @@ unticking the option revokes it.
 - **`htsp`** - produces `htsp://` URLs, which the HTML5 video element cannot
   play. The app detects this and shows a clear error instead of a black screen.
 
-### Recommended Tvheadend setup
+## Stream authentication (required)
+
+The app always uses Tvheadend's **persistent authentication token**:
+
+1. **Tvheadend**: *Configuration → Users → Passwords → edit the user → tick
+   **Persistent authentication** → Save.* The user's password entry gets a
+   permanent authcode.
+2. **App**: enter that user's **username and password** (used for the
+   playlist fetch).
+
+The playlist is fetched over XHR with Basic auth, and every stream URL carries
+a permanent `?auth=<token>` - so the `<video>` element itself never needs
+credentials. This is essential on webOS TV Lite, where the media element strips
+Basic auth from media URLs. The token is bound to that Tvheadend user;
+unticking the option revokes it.
+
+## Recommended Tvheadend setup
 
 These are the settings verified on a webOS TV Lite 3.9.3 (Chromium 38) with a
 modest 2-vCPU container: DVB channels need no transcoding, and the transcode
@@ -118,6 +143,7 @@ transcode stream profile):**
 | Height | `720` |
 | Bitrate | `2000` kb/s |
 | Preset | `ultrafast` |
+| B-frames | `0` |
 | Deinterlace | `No` |
 | Hardware acceleration | `No` (enable only with `/dev/dri` passthrough) |
 
@@ -131,27 +157,46 @@ transcode stream profile):**
 
 Notes:
 
-- The IPTV source's own timestamps can cause periodic 2–7 s re-buffers with
-  `pass`; the transcode profile re-times the stream and is smoother.
-- If the server is CPU-starved, give the container 3–4 vCPUs — `ultrafast` +
-  720p is roughly 3–4× cheaper than the default preset and resolution.
 - The built-in AAC encoder in some builds produces noise during silence; in
   that case prefer `Copy` for audio (MP2/AAC sources play natively).
+- With `pass`, the IPTV source's own timestamps can cause periodic re-buffers
+  on some channels; the transcode profile re-times the stream and is smoother.
+- If the server is CPU-starved, give the container 3-4 vCPUs - `ultrafast` +
+  720p is roughly 3-4x cheaper than the default preset and resolution.
+- Log spam like `libav ... specified frame type is not compatible with max
+  B-frames` means B-frames are still enabled somewhere - setting **B-frames
+  to 0** fixes both the spam and the transcode startup delay.
 
-### Notes
+## Live TV startup time
 
-- `#EXTM3U` parsing uses the `tvg-chno` attribute for channel numbers and falls
-  back to the playlist position.
-- The playlist is fetched over XHR with Basic auth; stream URLs carry
-  `?auth=` tokens instead (see *Stream authentication*), because a `<video>`
-  element cannot send an `Authorization` header.
-- If the channel list cannot be fetched, the app reports whether it was an
-  authentication, network/CORS or HTTP error. When using an nginx reverse proxy,
-  forward `/playlist` and `/stream` unchanged and preserve the query string
-  (the tokens live there). If CORS is enforced in your setup, add
-  `add_header Access-Control-Allow-Origin *;` to the proxy responses.
-- The app never ships credentials in the repository; they live only in the TV's
-  `localStorage`.
+Measured on the LG UJ635V (webOS TV Lite 3.9.3), a channel change takes about:
+
+| Phase | Time | Controllable? |
+| --- | --- | --- |
+| Switch delay (app setting) | 3 s | Yes - *Switch delay* in Settings |
+| Tvheadend tune + first data | ~3 s | Server/tuner side |
+| Player pre-buffering | ~10 s | No (see below) |
+
+The ~10 s is the TV's media engine filling its **hard-coded ideal buffer of
+10 seconds** (Chromium's `kBufferDuration = 10s`). Live data only arrives at
+realtime speed, so filling it takes ~10 s no matter what the app does. It is a
+compile-time constant in the web engine - there is no HTML attribute, webOS
+API, or system setting that changes it (the HTML `preload` attribute only
+hints how much may be fetched). This is also why a laptop/VLC starts the same
+stream in a second or two: different player, different buffer policy.
+
+Practical options to shorten it further:
+
+- **Switch delay** - already exposed in Settings (the 3 s above).
+- **HLS** - segmented playback starts after a couple of 2 s segments instead
+  of a 10 s fill (starts in ~5 s on this TV). Needs a small ffmpeg segmenter
+  in front of Tvheadend.
+- **Burst / ring-buffer proxy** - a small service that keeps the last ~15 s
+  of each channel cached and sends it at full speed on connect, so the
+  player's 10 s buffer fills in under a second (starts in ~2-3 s).
+
+Transcoding adds its own startup on top of the table above; the B-frames fix
+in the previous section removes most of it.
 
 ## Build the `.ipk`
 
@@ -159,7 +204,7 @@ No LG SDK is required. The package is assembled with standard `ar` + `tar`:
 
 ```sh
 ./package.sh
-# -> dist/com.lazarh.tvheadend_1.2.0_all.ipk
+# -> dist/com.lazarh.tvheadend_1.3.0_all.ipk
 ```
 
 The script produces a Debian-style IPK (`debian-binary`, `control.tar.gz`,
@@ -206,39 +251,14 @@ entered once on the TV.
   `files/conf/config.json`:
   `"tempDirForIpk": "/tmp/developer/temp"`.
 
-## Install on the TV
-
-1. Enable **Developer Mode** on the TV (Developer Mode app) and install the
-   webOS CLI on your computer:
-
-   ```sh
-   npm install -g @webos-tools/cli
-   ```
-
-   See the [webOS CLI installation guide](https://webostv.developer.lge.com/develop/tools/cli-installation)
-   and the [webOS Dev Mode](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app)
-   guide. `@webos-tools/cli` is the maintained CLI; it replaced
-   `@webosose/ares-cli` in 2024.
-2. Connect and install:
-
-   ```sh
-   ares-setup-device          # add the TV (IP + passphrase)
-   ares-install dist/com.lazarh.tvheadend_1.2.0_all.ipk
-   ```
-
-3. Launch **Tvheadend TV** from the TV launcher and configure the server.
-
-> Rooted / homebrew-enabled TVs can also install the `.ipk` with the usual
-> `ipkg install` tooling.
-
 ## CI
 
 `.github/workflows/build.yml` builds the IPK on every push and pull request,
-uploads it as an artifact, and attaches it to a GitHub Release when a `v*` tag is
-pushed:
+uploads it as an artifact, and attaches it to a GitHub Release when a `v*` tag
+is pushed:
 
 ```sh
-git tag v1.2.0 && git push origin v1.2.0
+git tag v1.3.0 && git push origin v1.3.0
 ```
 
 ## Project layout
@@ -271,8 +291,8 @@ Notes verified on an LG **UJ635V / webOS TV Lite 3.9.3** (Chromium 38) TV:
 - The media element does not send Basic auth from URL userinfo - streams use
   `?auth=` tokens instead (see *Stream authentication*).
 - The native media pipeline crashes if a new live stream starts immediately
-  after another one stopped. The app therefore waits ~3 s between stopping and
-  starting a stream (the OSD shows *Switching...* while it waits).
+  after another one stopped. The app therefore waits (the *Switch delay*
+  setting) between stopping and starting a stream.
 - Live WebM (VP8) streams crash the app on channel switch - the app no longer
   offers that profile; MPEG-TS H.264/AAC is the reliable format.
 - HLS (`.m3u8`) plays natively, but Tvheadend has no HLS output, so the
