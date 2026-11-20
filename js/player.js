@@ -15,6 +15,8 @@
   'use strict';
 
   var TUNE_COOLDOWN = 3000;
+  var BUFFER_START = 1.5;   /* seconds of buffer before starting playback */
+  var BUFFER_TIMEOUT = 10000;
 
   function Player(video) {
     this.video = video;
@@ -58,7 +60,7 @@
 
     video.addEventListener('stalled', function () {
       if (hasSource()) {
-        emit('status', 'Stream stalled - retrying...');
+        emit('status', 'Buffering...');
       }
     });
 
@@ -174,10 +176,57 @@
         return;
       }
       if (typeof self.handlers.status === 'function') {
-        self.handlers.status('Connecting...');
+        self.handlers.status('Buffering...');
       }
       self.video.src = url;
       self.video.load();
+      self.startWhenBuffered(id);
+    }, TUNE_COOLDOWN);
+  };
+
+  /*
+   * Starts playback only after enough data is buffered. Calling play()
+   * immediately makes the player show a frame, underrun and stall for many
+   * seconds on live transcoded streams; waiting for a small buffer first
+   * avoids that stall.
+   */
+  Player.prototype.startWhenBuffered = function (id) {
+    var self = this;
+    var started = false;
+    var poll = null;
+    var deadline = null;
+
+    function bufferedAhead() {
+      var video = self.video;
+      try {
+        if (!video.buffered.length) {
+          return 0;
+        }
+        return video.buffered.end(video.buffered.length - 1) - video.buffered.start(0);
+      } catch (error) {
+        return 0;
+      }
+    }
+
+    function onCanPlay() {
+      finish();
+    }
+
+    function finish() {
+      if (started) {
+        return;
+      }
+      started = true;
+      self.video.removeEventListener('canplay', onCanPlay, false);
+      if (poll) {
+        window.clearInterval(poll);
+      }
+      if (deadline) {
+        window.clearTimeout(deadline);
+      }
+      if (id !== self.tuneId) {
+        return;
+      }
       var promise = self.video.play();
       if (promise && typeof promise.catch === 'function') {
         promise.catch(function () {
@@ -189,7 +238,21 @@
           }
         });
       }
-    }, TUNE_COOLDOWN);
+    }
+
+    /* start as soon as the element can play (or a small buffer is ready),
+       with a safety deadline in case canplay never fires */
+    self.video.addEventListener('canplay', onCanPlay, false);
+    poll = window.setInterval(function () {
+      if (id !== self.tuneId) {
+        window.clearInterval(poll);
+        return;
+      }
+      if (bufferedAhead() >= BUFFER_START) {
+        finish();
+      }
+    }, 250);
+    deadline = window.setTimeout(finish, BUFFER_TIMEOUT);
   };
 
   window.TvhPlayer = Player;

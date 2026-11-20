@@ -394,6 +394,8 @@
         if (osd.isVisible()) {
           osd.setStatus(text);
         }
+        /* never hide the OSD while buffering/stalled - only after playback */
+        osd.clearTimer();
       },
       playing: function () {
         osd.setStatus('Playing');
