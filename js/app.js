@@ -26,8 +26,8 @@
   };
 
   var PROFILE_NOTES = {
-    'pass': 'No transcoding - only for channels the TV can decode directly',
-    'webtv-h264-aac-mpegts': 'Transcodes every channel to H.264 + AAC in MPEG-TS',
+    'pass': 'No transcoding - works for channels the TV can decode directly (most DVB and IPTV)',
+    'webtv-h264-aac-mpegts': 'Transcodes every channel to H.264 + AAC in MPEG-TS - for channels that need it',
     'htsp': 'HTSP protocol - the HTML5 video element cannot play this'
   };
 

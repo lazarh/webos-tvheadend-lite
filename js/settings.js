@@ -16,7 +16,7 @@
     server: 'http://192.168.0.100:9981',
     username: '',
     password: '',
-    profile: 'webtv-h264-aac-mpegts',
+    profile: 'pass',
     tuneDelay: 3
   };
 

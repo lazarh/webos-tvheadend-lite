@@ -16,7 +16,7 @@ and verified on an LG **UJ635V** running **webOS TV Lite 3.9.3** (Chromium 38).
   `<server>/playlist/auth/channels.m3u?profile=<profile>`.
 - Stream auth via Tvheadend persistent tokens; the playlist fetch uses Basic
   auth. Credentials are stored on the TV only.
-- Selectable stream profiles: `webtv-h264-aac-mpegts` (default), `pass`,
+- Selectable stream profiles: `pass` (default), `webtv-h264-aac-mpegts`,
   `htsp`.
 - Full EPG: now/next program info on the OSD (title, progress bar,
   description) and a full-screen TV guide with program browsing.
@@ -62,7 +62,7 @@ keyboard: press **OK** on a field to type.
    ```sh
    npm install -g @webos-tools/cli
    ares-setup-device          # add the TV (IP + passphrase)
-   ares-install dist/com.lazarh.tvheadend_1.3.0_all.ipk
+   ares-install dist/com.lazarh.tvheadend_1.3.1_all.ipk
    ```
 
    See the [webOS CLI installation guide](https://webostv.developer.lge.com/develop/tools/cli-installation)
@@ -84,7 +84,7 @@ The Settings panel (Red button) stores:
 | Server URL | `http://192.168.0.100:9981` |
 | Username | *(empty)* |
 | Password | *(empty)* |
-| Stream profile | `webtv-h264-aac-mpegts` |
+| Stream profile | `pass` |
 | Switch delay | `3 s` |
 
 Enter the URL of your Tvheadend server, for example
@@ -101,12 +101,13 @@ back if you ever see crashes.
 
 ## Stream profiles
 
-- **`webtv-h264-aac-mpegts`** (default) - transcodes every channel to H.264 +
-  AAC in MPEG-TS. The reliable format on **webOS TV Lite** (Chromium 38); DVB
-  and IPTV channels both play.
-- **`pass`** - no transcoding: best quality, zero CPU, but only for channels
-  the TV can decode directly (typically DVB). IPTV channels in MPEG-2/HEVC will
-  show a decode error.
+- **`pass`** (default) - no transcoding: best quality, zero CPU. Verified to
+  work for both DVB and IPTV channels when the source is already H.264/AAC
+  (the case for most current channels). Channels in other codecs (e.g.
+  MPEG-2/HEVC) show a decode error.
+- **`webtv-h264-aac-mpegts`** - transcodes every channel to H.264 + AAC in
+  MPEG-TS. Use it when a channel cannot play with `pass`; see
+  [Recommended Tvheadend setup](#recommended-tvheadend-setup) for the tuning.
 - **`htsp`** - produces `htsp://` URLs, which the HTML5 video element cannot
   play. The app detects this and shows a clear error instead of a black screen.
 
@@ -128,12 +129,15 @@ unticking the option revokes it.
 
 ## Recommended Tvheadend setup
 
-These are the settings verified on a webOS TV Lite 3.9.3 (Chromium 38) with a
-modest 2-vCPU container: DVB channels need no transcoding, and the transcode
-profile stays under ~10% CPU.
+Verified on an LG **UJ635V / webOS TV Lite 3.9.3** (Chromium 38).
 
-Set **View level → Expert** (top-right of the Tvheadend web UI) first, or the
-fields below stay hidden.
+**Start with `pass`** - it plays both DVB and IPTV channels when the source is
+already H.264/AAC, needs no transcoding (zero server CPU) and has no encoder
+startup delay. Only channels that fail with *"The TV cannot decode this
+stream"* need the transcoding profile below.
+
+If you need transcoding, set **View level → Expert** (top-right of the
+Tvheadend web UI) first, or the fields below stay hidden, then tune:
 
 **Configuration → Stream → Codec Profiles → `webtv-h264` (used by the
 transcode stream profile):**
@@ -159,10 +163,10 @@ Notes:
 
 - The built-in AAC encoder in some builds produces noise during silence; in
   that case prefer `Copy` for audio (MP2/AAC sources play natively).
-- With `pass`, the IPTV source's own timestamps can cause periodic re-buffers
-  on some channels; the transcode profile re-times the stream and is smoother.
-- If the server is CPU-starved, give the container 3-4 vCPUs - `ultrafast` +
-  720p is roughly 3-4x cheaper than the default preset and resolution.
+- With `pass`, some IPTV sources' timestamps can cause periodic re-buffers on
+  a few channels; the transcode profile re-times the stream and is smoother.
+- If the server is CPU-starved while transcoding, give the container 3-4
+  vCPUs - `ultrafast` + 720p is roughly 3-4x cheaper than the defaults.
 - Log spam like `libav ... specified frame type is not compatible with max
   B-frames` means B-frames are still enabled somewhere - setting **B-frames
   to 0** fixes both the spam and the transcode startup delay.
@@ -204,7 +208,7 @@ No LG SDK is required. The package is assembled with standard `ar` + `tar`:
 
 ```sh
 ./package.sh
-# -> dist/com.lazarh.tvheadend_1.3.0_all.ipk
+# -> dist/com.lazarh.tvheadend_1.3.1_all.ipk
 ```
 
 The script produces a Debian-style IPK (`debian-binary`, `control.tar.gz`,
@@ -227,7 +231,7 @@ TV (the **password is never baked in**):
 ```sh
 TVH_SERVER=http://192.168.0.100:9981 \
 TVH_USERNAME=user \
-TVH_PROFILE=webtv-h264-aac-mpegts \
+TVH_PROFILE=pass \
 ./package.sh
 ```
 
@@ -258,7 +262,7 @@ uploads it as an artifact, and attaches it to a GitHub Release when a `v*` tag
 is pushed:
 
 ```sh
-git tag v1.3.0 && git push origin v1.3.0
+git tag v1.3.1 && git push origin v1.3.1
 ```
 
 ## Project layout
