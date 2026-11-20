@@ -16,10 +16,23 @@
     server: 'http://192.168.0.100:9981',
     username: '',
     password: '',
-    profile: 'webtv-h264-aac-mpegts'
+    profile: 'webtv-h264-aac-mpegts',
+    tuneDelay: 3
   };
 
   var PROFILES = ['pass', 'webtv-h264-aac-mpegts', 'htsp'];
+  var TUNE_DELAYS = [1, 2, 3, 4, 5];
+
+  function normalizeDelay(value) {
+    var number = parseInt(value, 10);
+    if (isNaN(number) || number < 1) {
+      return DEFAULTS.tuneDelay;
+    }
+    if (number > 5) {
+      return 5;
+    }
+    return number;
+  }
 
   function clone(object) {
     var copy = {};
@@ -100,6 +113,7 @@
           settings.profile = DEFAULTS.profile;
         }
       }
+      settings.tuneDelay = normalizeDelay(stored.tuneDelay);
     }
     settings.server = normalizeServer(settings.server);
     return settings;
@@ -110,7 +124,8 @@
       server: normalizeServer(settings.server),
       username: trim(settings.username),
       password: String(settings.password === undefined || settings.password === null ? '' : settings.password),
-      profile: normalizeProfile(settings.profile)
+      profile: normalizeProfile(settings.profile),
+      tuneDelay: normalizeDelay(settings.tuneDelay)
     };
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
@@ -158,6 +173,7 @@
   window.TvhSettings = {
     DEFAULTS: DEFAULTS,
     PROFILES: PROFILES,
+    TUNE_DELAYS: TUNE_DELAYS,
     load: load,
     save: save,
     hasSettings: hasSettings,

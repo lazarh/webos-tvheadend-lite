@@ -66,6 +66,7 @@ The Settings panel (Red button) stores:
 | Username | *(empty)* |
 | Password | *(empty)* |
 | Stream profile | `webtv-h264-aac-mpegts` |
+| Switch delay | `3 s` |
 
 Enter the URL of your Tvheadend server, for example
 `http://tvheadend.local:9981` (or your internet/nginx proxy URL).

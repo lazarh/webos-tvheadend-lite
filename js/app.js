@@ -409,7 +409,7 @@
         osd.show(channel, text, true);
         osd.clearTimer();
       }
-    });
+    }, (state.settings.tuneDelay || 3) * 1000);
   }
 
   function zap(delta) {
@@ -626,6 +626,7 @@
       }
     }
     setText('profile-note', PROFILE_NOTES[values.profile] || 'Custom Tvheadend stream profile');
+    setText('value-delay', values.tuneDelay + ' s');
     highlightSettingsFocus();
   }
 
@@ -638,7 +639,8 @@
       server: state.settings.server,
       username: state.settings.username,
       password: state.settings.password,
-      profile: state.settings.profile
+      profile: state.settings.profile,
+      tuneDelay: state.settings.tuneDelay
     };
     state.settingsFocus = 0;
     hideSettingsError();
@@ -681,7 +683,8 @@
   }
 
   var CYCLE_LISTS = {
-    profile: window.TvhSettings.PROFILES
+    profile: window.TvhSettings.PROFILES,
+    tuneDelay: window.TvhSettings.TUNE_DELAYS
   };
 
   function cycleField(key, delta) {
@@ -706,6 +709,8 @@
     } else if (action === 'preset') {
       state.values.server = element.getAttribute('data-server');
       renderSettings();
+    } else if (action === 'delay') {
+      cycleField('tuneDelay', 1);
     } else if (action === 'save') {
       saveSettings();
     } else if (action === 'cancel') {
@@ -734,14 +739,14 @@
         consume(event);
         break;
       case KEYS.LEFT:
-        if (!editing && key === 'profile') {
-          cycleField('profile', -1);
+        if (!editing && (key === 'profile' || key === 'tuneDelay')) {
+          cycleField(key, -1);
           consume(event);
         }
         break;
       case KEYS.RIGHT:
-        if (!editing && key === 'profile') {
-          cycleField('profile', 1);
+        if (!editing && (key === 'profile' || key === 'tuneDelay')) {
+          cycleField(key, 1);
           consume(event);
         }
         break;

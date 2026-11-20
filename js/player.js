@@ -122,11 +122,12 @@
     return /^htsp:\/\//i.test(url || '');
   };
 
-  Player.prototype.tune = function (channel, handlers) {
+  Player.prototype.tune = function (channel, handlers, delayMs) {
     var self = this;
     this.tuneId++;
     var id = this.tuneId;
     this.handlers = handlers || {};
+    var cooldown = typeof delayMs === 'number' && delayMs > 0 ? delayMs : TUNE_COOLDOWN;
 
     if (this.timer) {
       window.clearTimeout(this.timer);
@@ -181,7 +182,7 @@
       self.video.src = url;
       self.video.load();
       self.startWhenBuffered(id);
-    }, TUNE_COOLDOWN);
+    }, cooldown);
   };
 
   /*
