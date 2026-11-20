@@ -13,19 +13,18 @@ and verified on an LG **UJ635V** running **webOS TV Lite 3.9.3** (Chromium 38).
 ## Features
 
 - Loads the channel list from Tvheadend's M3U playlist endpoint
-  `<server>/playlist/channels.m3u?profile=<profile>`.
-- Token-based stream auth (persistent or 5-minute tickets), with Basic auth for
-  the playlist fetch. Credentials are stored on the TV only.
-- Selectable stream profiles: `pass`, `webtv-h264-aac-mpegts`, `htsp`, plus an
-  automatic **fallback profile** for channels the main profile cannot play.
+  `<server>/playlist/auth/channels.m3u?profile=<profile>`.
+- Stream auth via Tvheadend persistent tokens; the playlist fetch uses Basic
+  auth. Credentials are stored on the TV only.
+- Selectable stream profiles: `webtv-h264-aac-mpegts` (default), `pass`,
+  `htsp`.
 - Full EPG: now/next program info on the OSD (title, description, progress
   bar) and a full-screen TV guide with program browsing.
 - Full Magic Remote / D-pad control, using the TV's system keyboard for text
   entry.
 - Channel info OSD with a 4 second auto-hide, live status and error reporting.
 - Direct channel entry with the number keys.
-- Server URL, credentials, profile, fallback and auth mode stored in
-  `localStorage`.
+- Server URL, credentials and profile stored in `localStorage`.
 
 ## Remote control
 
@@ -66,9 +65,7 @@ The Settings panel (Red button) stores:
 | Server URL | `http://192.168.0.100:9981` |
 | Username | *(empty)* |
 | Password | *(empty)* |
-| Stream profile | `pass` |
-| Fallback profile | `webtv-h264-aac-mpegts` |
-| Stream auth | `auth` (persistent token) |
+| Stream profile | `webtv-h264-aac-mpegts` |
 
 Enter the URL of your Tvheadend server, for example
 `http://tvheadend.local:9981` (or your internet/nginx proxy URL).
@@ -76,45 +73,32 @@ Enter the URL of your Tvheadend server, for example
 The **Stream profile** field cycles through the built-in names with Left/Right;
 press **OK** to type any custom Tvheadend profile name.
 
-The **Fallback profile** is tried automatically when a channel cannot be played
-with the main profile - DVB channels play with `pass` (zero server CPU) while
-IPTV channels in MPEG-2/HEVC are automatically retried with the transcoding
-profile. The choice is remembered per channel. Set the field to empty to
-disable the fallback.
+### Stream authentication (required)
+
+The app always uses Tvheadend's **persistent authentication token**:
+
+1. In Tvheadend: *Configuration → Users → Passwords → edit the user → tick
+   **Persistent authentication** → Save.* The user's password entry gets a
+   permanent authcode.
+2. In the app: enter that user's **username and password** (used for the
+   playlist fetch).
+
+The playlist is fetched over XHR with Basic auth, and every stream URL carries
+a permanent `?auth=<token>` - so the `<video>` element itself never needs
+credentials. This is essential on webOS TV Lite, where the media element strips
+Basic auth from media URLs. The token is bound to that Tvheadend user;
+unticking the option revokes it.
 
 ### Stream profiles
 
-- **`pass`** - no transcoding: best quality, zero CPU. DVB channels usually
-  play directly; channels the TV cannot decode are retried with the fallback
-  profile automatically (see *Fallback profile*).
-- **`webtv-h264-aac-mpegts`** - transcodes to H.264 + AAC in MPEG-TS. The
-  reliable format on **webOS TV Lite** (Chromium 38); the default fallback.
+- **`webtv-h264-aac-mpegts`** (default) - transcodes every channel to H.264 +
+  AAC in MPEG-TS. The reliable format on **webOS TV Lite** (Chromium 38); DVB
+  and IPTV channels both play.
+- **`pass`** - no transcoding: best quality, zero CPU, but only for channels
+  the TV can decode directly (typically DVB). IPTV channels in MPEG-2/HEVC will
+  show a decode error.
 - **`htsp`** - produces `htsp://` URLs, which the HTML5 video element cannot
   play. The app detects this and shows a clear error instead of a black screen.
-
-### Stream auth (recommended: `auth` / persistent token)
-
-Stream auth is a two-part setup - the server issues a token, then the app uses
-it:
-
-1. **Tvheadend**: *Configuration → Users → Passwords → edit the user → tick
-   **Persistent authentication** → Save.* The user's password entry now has a
-   permanent authcode.
-2. **App**: Settings → **Stream auth** → `auth`.
-
-The playlist is then fetched once with your username/password (Basic auth over
-XHR), and every stream URL carries a permanent `?auth=<token>`. The `<video>`
-element itself never needs credentials - which is essential on webOS TV Lite,
-where the media element strips Basic auth from URLs. The token is bound to that
-Tvheadend user; unticking the option revokes it.
-
-The **Stream auth** field cycles through three values:
-
-| Value | Name | Notes |
-| --- | --- | --- |
-| `auth` | persistent token | **Recommended**; requires step 1 above. No expiry, no refresh. |
-| `ticket` | 5-minute tickets | Works with no server change; the app refreshes the playlist every 4 minutes and retries once on failure. |
-| `url` | Basic in URL | Embeds `user:pass` in stream URLs; fails on webOS TV Lite. |
 
 ### Recommended Tvheadend setup
 
@@ -158,7 +142,7 @@ Notes:
 - `#EXTM3U` parsing uses the `tvg-chno` attribute for channel numbers and falls
   back to the playlist position.
 - The playlist is fetched over XHR with Basic auth; stream URLs carry
-  `?auth=`/`?ticket=` tokens instead (see *Stream auth*), because a `<video>`
+  `?auth=` tokens instead (see *Stream authentication*), because a `<video>`
   element cannot send an `Authorization` header.
 - If the channel list cannot be fetched, the app reports whether it was an
   authentication, network/CORS or HTTP error. When using an nginx reverse proxy,
@@ -174,7 +158,7 @@ No LG SDK is required. The package is assembled with standard `ar` + `tar`:
 
 ```sh
 ./package.sh
-# -> dist/com.lazarh.tvheadend_1.1.0_all.ipk
+# -> dist/com.lazarh.tvheadend_1.2.0_all.ipk
 ```
 
 The script produces a Debian-style IPK (`debian-binary`, `control.tar.gz`,
@@ -197,9 +181,7 @@ TV (the **password is never baked in**):
 ```sh
 TVH_SERVER=http://192.168.0.100:9981 \
 TVH_USERNAME=user \
-TVH_PROFILE=pass \
-TVH_AUTH_MODE=auth \
-TVH_FALLBACK_PROFILE=webtv-h264-aac-mpegts \
+TVH_PROFILE=webtv-h264-aac-mpegts \
 ./package.sh
 ```
 
@@ -240,7 +222,7 @@ entered once on the TV.
 
    ```sh
    ares-setup-device          # add the TV (IP + passphrase)
-   ares-install dist/com.lazarh.tvheadend_1.1.0_all.ipk
+   ares-install dist/com.lazarh.tvheadend_1.2.0_all.ipk
    ```
 
 3. Launch **Tvheadend TV** from the TV launcher and configure the server.
@@ -285,8 +267,8 @@ The JavaScript intentionally avoids optional chaining, nullish coalescing,
 
 Notes verified on an LG **UJ635V / webOS TV Lite 3.9.3** (Chromium 38) TV:
 
-- The media element does not send Basic auth from URL userinfo - always use
-  `auth` or `ticket` on this platform (see *Stream auth*).
+- The media element does not send Basic auth from URL userinfo - streams use
+  `?auth=` tokens instead (see *Stream authentication*).
 - The native media pipeline crashes if a new live stream starts immediately
   after another one stopped. The app therefore waits ~3 s between stopping and
   starting a stream (the OSD shows *Switching...* while it waits).

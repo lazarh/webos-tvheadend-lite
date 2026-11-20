@@ -9,7 +9,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_ID="com.lazarh.tvheadend"
-VERSION="1.1.0"
+VERSION="1.2.0"
 ARCH="all"
 PKG_NAME="${APP_ID}_${VERSION}_${ARCH}.ipk"
 
@@ -47,8 +47,8 @@ done
 # Optional: bake server settings into the package so no typing is needed on
 # the TV. The password is intentionally never baked in.
 #   TVH_SERVER=http://192.168.0.100:9981 TVH_USERNAME=user \
-#   TVH_PROFILE=pass TVH_AUTH_MODE=auth ./package.sh
-if [[ -n "${TVH_SERVER:-}" || -n "${TVH_USERNAME:-}" || -n "${TVH_PROFILE:-}" || -n "${TVH_AUTH_MODE:-}" || -n "${TVH_FALLBACK_PROFILE:-}" ]]; then
+#   TVH_PROFILE=webtv-h264-aac-mpegts ./package.sh
+if [[ -n "${TVH_SERVER:-}" || -n "${TVH_USERNAME:-}" || -n "${TVH_PROFILE:-}" ]]; then
   echo ">> Baking install-time config into js/config.js"
   python3 - "$APP_DIR/js/config.js" <<'PY'
 import json, os, sys
@@ -57,8 +57,6 @@ for env, key in [
     ('TVH_SERVER', 'server'),
     ('TVH_USERNAME', 'username'),
     ('TVH_PROFILE', 'profile'),
-    ('TVH_AUTH_MODE', 'authMode'),
-    ('TVH_FALLBACK_PROFILE', 'fallbackProfile'),
 ]:
     value = os.environ.get(env, '').strip()
     if value:

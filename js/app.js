@@ -26,22 +26,9 @@
   };
 
   var PROFILE_NOTES = {
-    'pass': 'No transcoding - DVB channels usually work; IPTV channels may need the fallback',
+    'pass': 'No transcoding - only for channels the TV can decode directly',
     'webtv-h264-aac-mpegts': 'Transcodes every channel to H.264 + AAC in MPEG-TS',
     'htsp': 'HTSP protocol - the HTML5 video element cannot play this'
-  };
-
-  var FALLBACK_NOTES = {
-    'webtv-h264-aac-mpegts': 'Transcoding profile tried automatically when a channel cannot play',
-    'pass': 'Raw stream tried automatically when a channel cannot play',
-    'htsp': 'HTSP protocol - not playable by the HTML5 video element',
-    '': 'No fallback - channels that cannot play show an error'
-  };
-
-  var AUTH_NOTES = {
-    'auth': 'Persistent token - enable "Persistent authentication" for the user in Tvheadend (Users > Passwords)',
-    'ticket': '5-minute tickets - works without server changes, refreshed automatically',
-    'url': 'Basic auth in the stream URL - for standard webOS TVs only'
   };
 
   var state = {
@@ -50,13 +37,11 @@
     channels: [],
     currentIndex: -1,
     currentUrl: '',
-    channelProfiles: {},
     settingsOpen: false,
     settingsFocus: 0,
     values: null,
     digits: '',
-    digitTimer: null,
-    ticketTimer: null
+    digitTimer: null
   };
 
   var player = null;
@@ -368,62 +353,10 @@
     }
 
     message.hide();
-    scheduleTicketRefresh();
     tuneIndex(index);
   }
 
-  /*
-   * Silently re-fetches the playlist (ticket mode: tokens expire after
-   * ~5 minutes). The playing stream is not interrupted; only the stored
-   * channel URLs are replaced so future tunes use fresh tickets.
-   */
-  function refreshPlaylistSilently(onDone, onError) {
-    if (!state.configured) {
-      return;
-    }
-    window.TvhPlaylist.fetch(state.settings, function (error, channels) {
-      if (error) {
-        if (typeof onError === 'function') {
-          onError();
-        }
-        return;
-      }
-      var current = state.channels[state.currentIndex];
-      state.channels = channels;
-      channelList.setChannels(channels);
-
-      var index = 0;
-      var i;
-      if (current) {
-        for (i = 0; i < channels.length; i++) {
-          if (channels[i].number === current.number && channels[i].name === current.name) {
-            index = i;
-            break;
-          }
-        }
-      }
-      state.currentIndex = index;
-      state.currentUrl = channels[index].url;
-      channelList.setCurrent(index);
-      if (typeof onDone === 'function') {
-        onDone();
-      }
-    });
-  }
-
-  function scheduleTicketRefresh() {
-    if (state.ticketTimer) {
-      window.clearInterval(state.ticketTimer);
-      state.ticketTimer = null;
-    }
-    if (state.settings.authMode === 'ticket') {
-      state.ticketTimer = window.setInterval(function () {
-        refreshPlaylistSilently();
-      }, 240000);
-    }
-  }
-
-  function tuneIndex(index, startStatus, attempts) {
+  function tuneIndex(index) {
     var count = state.channels.length;
     if (!count) {
       message.show('No channels', 'The playlist did not contain any channels.', 'RED: settings');
@@ -435,10 +368,7 @@
     var channel = state.channels[state.currentIndex];
     state.currentUrl = channel.url;
 
-    /* per-channel profile memory: base URL without the profile parameter */
-    var baseKey = channel.url.replace(/profile=[^&]*/i, '');
-    var effectiveProfile = state.channelProfiles[baseKey] || state.settings.profile;
-    var streamUrl = window.TvhSettings.withProfile(channel.url, effectiveProfile);
+    var streamUrl = channel.url;
     /* smaller server-side queue: first bytes arrive faster (default is 1.5 MB) */
     if (!/[?&]qsize=/.test(streamUrl)) {
       streamUrl += (streamUrl.indexOf('?') !== -1 ? '&' : '?') + 'qsize=300000';
@@ -450,18 +380,16 @@
       logo: channel.logo
     };
 
-    var a = attempts || { ticket: false, fallback: false };
-
     if (window.__tvhTestLog) {
-      window.__tvhTestLog.push({ type: 'tune', profile: effectiveProfile });
+      window.__tvhTestLog.push({ type: 'tune', profile: state.settings.profile });
     }
 
     channelList.setCurrent(state.currentIndex);
     message.hide();
-    osd.show(channel, startStatus || 'Switching...');
+    osd.show(channel, 'Switching...');
     loadNowNext(channel);
 
-    player.tune(effectiveChannel, state.settings, {
+    player.tune(effectiveChannel, {
       status: function (text) {
         if (osd.isVisible()) {
           osd.setStatus(text);
@@ -472,42 +400,14 @@
         osd.scheduleHide(4000);
       },
       error: function (info) {
-        var code = (info && info.code) || 0;
         var text = (info && info.text) || 'Playback error';
-
         if (window.__tvhTestLog) {
-          window.__tvhTestLog.push({ type: 'error', code: code });
+          window.__tvhTestLog.push({ type: 'error', code: (info && info.code) || 0 });
         }
-
-        /* 1) ticket mode: refresh the playlist once and retry (an expired
-           ticket also surfaces as error code 4 on this TV) */
-        if (state.settings.authMode === 'ticket' && !a.ticket) {
-          a.ticket = true;
-          osd.setStatus('Refreshing tickets...');
-          refreshPlaylistSilently(function () {
-            tuneIndex(state.currentIndex, undefined, a);
-          }, function () {
-            osd.show(channel, text, true);
-            osd.clearTimer();
-          });
-          return;
-        }
-
-        /* 2) decode/format failure: retry the channel with the fallback profile */
-        if ((code === 3 || code === 4) && !a.fallback) {
-          var fallback = state.settings.fallbackProfile;
-          if (fallback && fallback !== effectiveProfile && fallback !== 'htsp') {
-            a.fallback = true;
-            state.channelProfiles[baseKey] = fallback;
-            tuneIndex(state.currentIndex, 'Trying fallback profile...', a);
-            return;
-          }
-        }
-
         osd.show(channel, text, true);
         osd.clearTimer();
       }
-    }, startStatus || 'Switching...');
+    });
   }
 
   function zap(delta) {
@@ -651,8 +551,7 @@
       server: 'input-server',
       username: 'input-username',
       password: 'input-password',
-      profile: 'input-profile',
-      fallbackProfile: 'input-fallback'
+      profile: 'input-profile'
     };
     var input = byId(ids[key]);
     if (input) {
@@ -672,8 +571,7 @@
       server: 'input-server',
       username: 'input-username',
       password: 'input-password',
-      profile: 'input-profile',
-      fallbackProfile: 'input-fallback'
+      profile: 'input-profile'
     };
     for (var key in ids) {
       if (ids.hasOwnProperty(key)) {
@@ -711,13 +609,11 @@
   function renderSettings() {
     var values = state.values;
     var element;
-    var i;
     var inputs = {
       server: 'input-server',
       username: 'input-username',
       password: 'input-password',
-      profile: 'input-profile',
-      fallbackProfile: 'input-fallback'
+      profile: 'input-profile'
     };
     for (var key in inputs) {
       if (inputs.hasOwnProperty(key)) {
@@ -728,9 +624,6 @@
       }
     }
     setText('profile-note', PROFILE_NOTES[values.profile] || 'Custom Tvheadend stream profile');
-    setText('fallback-note', FALLBACK_NOTES[values.fallbackProfile || ''] || 'Custom fallback profile');
-    setText('value-auth', values.authMode);
-    setText('auth-note', AUTH_NOTES[values.authMode] || '');
     highlightSettingsFocus();
   }
 
@@ -743,9 +636,7 @@
       server: state.settings.server,
       username: state.settings.username,
       password: state.settings.password,
-      profile: state.settings.profile,
-      fallbackProfile: state.settings.fallbackProfile,
-      authMode: state.settings.authMode
+      profile: state.settings.profile
     };
     state.settingsFocus = 0;
     hideSettingsError();
@@ -788,9 +679,7 @@
   }
 
   var CYCLE_LISTS = {
-    profile: window.TvhSettings.PROFILES,
-    fallbackProfile: window.TvhSettings.FALLBACKS,
-    authMode: window.TvhSettings.AUTH_MODES
+    profile: window.TvhSettings.PROFILES
   };
 
   function cycleField(key, delta) {
@@ -815,8 +704,6 @@
     } else if (action === 'preset') {
       state.values.server = element.getAttribute('data-server');
       renderSettings();
-    } else if (action === 'auth') {
-      cycleField('authMode', 1);
     } else if (action === 'save') {
       saveSettings();
     } else if (action === 'cancel') {
@@ -845,14 +732,14 @@
         consume(event);
         break;
       case KEYS.LEFT:
-        if (!editing && (key === 'profile' || key === 'fallbackProfile' || key === 'authMode')) {
-          cycleField(key, -1);
+        if (!editing && key === 'profile') {
+          cycleField('profile', -1);
           consume(event);
         }
         break;
       case KEYS.RIGHT:
-        if (!editing && (key === 'profile' || key === 'fallbackProfile' || key === 'authMode')) {
-          cycleField(key, 1);
+        if (!editing && key === 'profile') {
+          cycleField('profile', 1);
           consume(event);
         }
         break;

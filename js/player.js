@@ -3,7 +3,8 @@
  *
  * webOS TV Lite (Chromium 38) notes, established by on-device testing:
  * - The media element does NOT send Basic auth from URL userinfo, so the app
- *   uses Tvheadend auth tokens/tickets instead (see settings.js).
+ *   uses Tvheadend persistent auth tokens in the stream URLs (see
+ *   settings.js).
  * - The native pipeline crashes if a new live stream starts too soon after
  *   the previous one stopped, so every tune waits TUNE_COOLDOWN after the
  *   stop before starting the new stream.
@@ -90,7 +91,7 @@
       return 'Decoding error - the stream may be corrupt';
     }
     if (error.code === 4) {
-      return 'The TV cannot decode this stream - trying another profile';
+      return 'The TV cannot decode this stream - try a different stream profile';
     }
     return 'Playback error (' + error.code + ')';
   };
@@ -119,12 +120,11 @@
     return /^htsp:\/\//i.test(url || '');
   };
 
-  Player.prototype.tune = function (channel, settings, handlers, startStatus) {
+  Player.prototype.tune = function (channel, handlers) {
     var self = this;
     this.tuneId++;
     var id = this.tuneId;
     this.handlers = handlers || {};
-    var initialStatus = startStatus || 'Switching...';
 
     if (this.timer) {
       window.clearTimeout(this.timer);
@@ -149,7 +149,7 @@
       return;
     }
 
-    var url = window.TvhSettings.streamUrl(channel.url, settings);
+    var url = channel.url;
 
     /* stop the current stream first */
     try {
@@ -165,7 +165,7 @@
     }
 
     if (typeof handlers.status === 'function') {
-      handlers.status(initialStatus);
+      handlers.status('Switching...');
     }
 
     /* start the new stream after the cooldown (native player teardown) */
